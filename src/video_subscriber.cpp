@@ -74,9 +74,17 @@ private:
     int accSpeed_;    // km/h
     bool saveImage_;
 
+    std::string model_path_;
+
     // Detection models
     Detect model_;
     LaneDetector laneDetector_;
+    std::string getModelPath()
+    {
+        ros::NodeHandle private_nh("~");
+        private_nh.param<std::string>("model_path", model_path_, "/home/trung/Desktop/Thesis_University/c++/models/best.engine");
+        return model_path_;
+    }
 
 public:
     VideoSubscriber() : it_(nh_),
@@ -88,7 +96,7 @@ public:
                         accMaxSpeed_(90),
                         accSpeed_(60),
                         saveImage_(false),
-                        model_("/home/trung/Desktop/Thesis_University/c++/models/best.engine", logger),
+                        model_(getModelPath(), logger), // Initialize in member init list
                         laneDetector_()
     {
         // Subscribe to video topic
@@ -99,7 +107,7 @@ public:
         fpsStartTime_ = std::chrono::steady_clock::now();
 
         ROS_INFO("Video subscriber started. Waiting for frames...");
-        ROS_INFO("Model loaded: /home/trung/Desktop/Thesis_University/c++/models/best.engine");
+        ROS_INFO("Model loaded: %s", model_path_.c_str());
     }
 
     void imageCallback(const sensor_msgs::Image::ConstPtr &msg)
@@ -120,7 +128,6 @@ public:
 
             // Create a copy for processing
             cv::Mat image = cv_ptr->image.clone();
-
 
             // Object detection
             vector<Detection> objects;
@@ -214,7 +221,7 @@ private:
                 int newSpeed = (class_id - 9) * 10; // class_id 12 -> 30km/h, 13 -> 40, etc.
                 maxSpeed_ = newSpeed;
                 saveImage_ = true;
-                ROS_INFO("Class_id: %d",class_id);
+                ROS_INFO("Class_id: %d", class_id);
                 ROS_INFO("Speed limit detected: %d km/h", newSpeed);
             }
         }
