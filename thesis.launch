@@ -1,0 +1,9 @@
+<launch>
+    <node name="video_publisher" pkg="thesis" type="video_publisher">
+        <param name="video_path" value="/home/trung/Desktop/Thesis_University/c++/test_video.mp4" />
+        <param name="fps" value="35.0" />
+    </node>
+    <node pkg="thesis" type="video_subscriber" name="video_subscriber">
+        <remap from="image" to="/video/image" />
+    </node>
+</launch>
