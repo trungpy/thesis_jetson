@@ -82,7 +82,18 @@ private:
     std::string getModelPath()
     {
         ros::NodeHandle private_nh("~");
-        private_nh.param<std::string>("model_path", model_path_, "/home/trung/Desktop/Thesis_University/c++/models/best.engine");
+        private_nh.param<std::string>("model_path", model_path_, "");
+        // If not found in private, try global
+        if (model_path_.empty())
+        {
+            nh_.param<std::string>("video_path", model_path_, "");
+        }
+        if (model_path_.empty())
+        {
+            ROS_ERROR("No model path specified! Use: model_path_:=/path/to/model.engine");
+            ros::shutdown();
+            return "";
+        }
         return model_path_;
     }
 

@@ -14,6 +14,11 @@ static Logger logger;
 
 Detect::Detect(string model_path, nvinfer1::ILogger &logger)
 {
+    if (model_path.empty())
+    {
+        cout << ">Require model path<" << endl;
+        return;
+    }
     // Deserialize an engine
     if (model_path.find(".onnx") == std::string::npos)
     {

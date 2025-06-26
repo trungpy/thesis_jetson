@@ -80,6 +80,9 @@
         "cfenv": "cpp",
         "typeindex": "cpp",
         "typeinfo": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "any": "cpp",
+        "ranges": "cpp",
+        "span": "cpp"
     }
 }
