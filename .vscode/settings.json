@@ -83,6 +83,20 @@
         "valarray": "cpp",
         "any": "cpp",
         "ranges": "cpp",
-        "span": "cpp"
+        "span": "cpp",
+        "csetjmp": "cpp",
+        "barrier": "cpp",
+        "charconv": "cpp",
+        "coroutine": "cpp",
+        "cuchar": "cpp",
+        "forward_list": "cpp",
+        "optional": "cpp",
+        "source_location": "cpp",
+        "latch": "cpp",
+        "numbers": "cpp",
+        "scoped_allocator": "cpp",
+        "syncstream": "cpp",
+        "variant": "cpp",
+        "filesystem": "cpp"
     }
 }

@@ -1,4 +1,6 @@
-﻿#include <process.h>
+#ifndef _APP_H
+#define _APP_H
+#include <process.h>
 
 /**
  * @brief Setting up Tensorrt logger
@@ -110,12 +112,4 @@ class App {
     }
 };
 
-int main(int argc, char **argv) {
-    try {
-        App app;
-        return app.runApp(argc, argv);
-    } catch (const std::exception &e) {
-        std::cerr << "❌ Exception: " << e.what() << std::endl;
-        return 1;
-    }
-}
+#endif // _APP_H

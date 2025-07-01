@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(thesis LANGUAGES CXX CUDA)
 
-## Compile as C++14 (reliable with CUDA 11.0)
+# Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -14,9 +14,11 @@ include(FindCUDAConfig)
 include(FindOpenCVConfig)
 include(FindTensorRTConfig)
 
+# Include Eigen
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
 
-
-## Find catkin
+## Find catkin FIRST - this is crucial for catkin projects
 find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   image_transport
@@ -45,34 +47,13 @@ message(STATUS "CUDA Toolkit: ${CUDA_TOOLKIT_ROOT_DIR}")
 
 # Enable CUDA with manual standard setting
 enable_language(CUDA)
-# Don't set CMAKE_CUDA_STANDARD, use manual flags instead
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++14 -Wno-deprecated-gpu-targets")
-
-# Suppress deprecated GPU architecture warnings - already included above
 
 # Find CUDA libraries explicitly
 find_library(CUDA_CUDART_LIBRARY cudart
     PATHS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 ${CUDA_TOOLKIT_ROOT_DIR}/lib
     NO_DEFAULT_PATH
 )
-
-# Source files
-set(HEADERS
-    src/Detect.h
-    src/preprocess.h
-)
-
-set(SOURCES
-    src/video_subscriber.cpp
-    src/preprocess.cu
-)
-
-# Only add Detect.cpp if it exists
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/Detect.cpp")
-    list(APPEND SOURCES src/Detect.cpp)
-else()
-    message(WARNING "src/Detect.cpp not found. Please check your sources.")
-endif()
 
 # TensorRT detection - Manual approach for better control
 if(ARCH_NAME STREQUAL "aarch64")
@@ -109,49 +90,57 @@ foreach(lib ${TensorRT_LIBS})
     endif()
 endforeach()
 
-# Static library with CUDA support
-set(LIB_SOURCE_DIRS
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/lanevision"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/followdist"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/tensorrt"
-)
-
-# Collect library sources
-set(LIB_SOURCES)
-foreach(dir ${LIB_SOURCE_DIRS})
-    if(EXISTS ${dir})
-        file(GLOB dir_sources 
-            "${dir}/*.cpp"
-            "${dir}/*.cu"
-            "${dir}/*.cxx"
-        )
-        list(APPEND LIB_SOURCES ${dir_sources})
+# Set CUDA architectures
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
+    if(ARCH_NAME STREQUAL "aarch64")
+        set(CUDA_ARCH_LIST "53;72") # Jetson Nano (53) and Xavier/Orin (72)
+    else()
+        set(CUDA_ARCH_LIST "75;80;86") # Modern NVIDIA architectures
     endif()
-endforeach()
-
-message(STATUS "LIB_SOURCES: ${LIB_SOURCES}")
-
-# Create library only if we have sources
-if(LIB_SOURCES)
-    add_library(acc STATIC ${LIB_SOURCES})
-    target_include_directories(acc PUBLIC
-        ${LIB_SOURCE_DIRS}
-        ${TensorRT_INCLUDE_DIR}
-        ${CUDA_TOOLKIT_ROOT_DIR}/include
-    )
-    set(HAVE_ACC_LIB TRUE)
-else()
-    message(WARNING "No library sources found, creating empty library")
-    add_library(acc STATIC src/empty.cpp)  # You'll need to create this empty file
-    set(HAVE_ACC_LIB FALSE)
 endif()
 
-# Catkin package setup
+# Gather all cpp/cu files
+file(GLOB_RECURSE ALL_SOURCES src/*.cpp src/*.cu)
+
+# Define entry points that should be excluded from shared sources
+set(VIDEO_PUBLISHER_ENTRY src/video_publisher.cpp)
+set(VIDEO_SUBSCRIBER_ENTRY src/video_subscriber.cpp)
+set(VIDEO_SUBSCRIBER_CAPTURE_ENTRY src/video_subscriber_capture.cpp)
+
+# Remove ALL entry points from shared sources
+set(SHARED_SOURCES ${ALL_SOURCES})
+list(REMOVE_ITEM SHARED_SOURCES 
+     ${CMAKE_CURRENT_SOURCE_DIR}/${VIDEO_PUBLISHER_ENTRY}
+     ${CMAKE_CURRENT_SOURCE_DIR}/${VIDEO_SUBSCRIBER_ENTRY}
+     ${CMAKE_CURRENT_SOURCE_DIR}/${VIDEO_SUBSCRIBER_CAPTURE_ENTRY}
+     ${VIDEO_PUBLISHER_ENTRY}
+     ${VIDEO_SUBSCRIBER_ENTRY}
+     ${VIDEO_SUBSCRIBER_CAPTURE_ENTRY}
+)
+
+# Debug: Print what's in SHARED_SOURCES to verify
+message(STATUS "SHARED_SOURCES contains: ${SHARED_SOURCES}")
+
+# Only add Detect.cpp if it exists and not already in SHARED_SOURCES
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/Detect.cpp")
+    list(FIND SHARED_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/Detect.cpp" DETECT_FOUND)
+    if(DETECT_FOUND EQUAL -1)
+        list(APPEND SHARED_SOURCES src/Detect.cpp)
+    endif()
+else()
+    message(WARNING "src/Detect.cpp not found. Please check your sources.")
+endif()
+
+###################################
+## catkin specific configuration ##
+###################################
+
+# Catkin package setup - MUST come before any add_executable or add_library
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES acc
+  LIBRARIES bytetrack
   CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs
+  DEPENDS OpenCV TensorRT
 )
 
 ###########
@@ -160,54 +149,86 @@ catkin_package(
 
 # Include directories - prioritize OpenCV 4.1
 include_directories(
-  ${OpenCV_INCLUDE_DIRS}  # Put OpenCV first
-  include
-  ${catkin_INCLUDE_DIRS}
-  ${TensorRT_INCLUDE_DIR}
-  ${CUDA_TOOLKIT_ROOT_DIR}/include
+    include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include 
+    ${catkin_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
+    ${TensorRT_INCLUDE_DIR}
+    ${CUDA_TOOLKIT_ROOT_DIR}/include
+    ${EIGEN3_INCLUDE_DIR}
 )
 
-# Publisher executable
-add_executable(video_publisher src/video_publisher.cpp)
-target_link_libraries(video_publisher 
-  ${catkin_LIBRARIES} 
-  ${OpenCV_LIBS}
+# Bytetrack library
+include_directories(${PROJECT_SOURCE_DIR}/bytetrack/include)
+file(GLOB_RECURSE SRCS01 ${PROJECT_SOURCE_DIR}/bytetrack/src/*.cpp)
+add_library(bytetrack SHARED ${SRCS01})
+target_link_libraries(bytetrack 
+    ${CUDA_CUDART_LIBRARY} 
+    ${TensorRT_LIBRARIES}
+    ${OpenCV_LIBS}
 )
 
-# Subscriber executable with CUDA
-add_executable(video_subscriber ${SOURCES})
-
-# Link libraries - prioritize OpenCV 4.1 and be explicit about ordering
-target_link_libraries(video_subscriber 
-  PRIVATE
-  acc 
-  ${OpenCV_LIBS}  # Link OpenCV first to prioritize 4.1
-  ${catkin_LIBRARIES} 
-  ${TensorRT_LIBRARIES}
-  ${CUDA_CUDART_LIBRARY}
-)
-
-# Set CUDA properties
-set_target_properties(video_subscriber PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
-    CUDA_RESOLVE_DEVICE_SYMBOLS ON
-)
-
-# Set CUDA architectures
+# Set CUDA properties for bytetrack if it has CUDA sources
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
-    if(ARCH_NAME STREQUAL "aarch64")
-        set(CUDA_ARCH_LIST "53;72") # Jetson Nano (53) and Xavier/Orin (72)
-    else()
-        set(CUDA_ARCH_LIST "75;80;86") # Modern NVIDIA architectures
-    endif()
-    
-    set_target_properties(video_subscriber PROPERTIES
+    set_target_properties(bytetrack PROPERTIES
         CUDA_ARCHITECTURES "${CUDA_ARCH_LIST}"
     )
 endif()
 
-# Set RPATH
-set_target_properties(video_subscriber PROPERTIES
-    BUILD_RPATH "${TensorRT_LIB_DIR}:${CUDA_TOOLKIT_ROOT_DIR}/lib64"
-    INSTALL_RPATH "${TensorRT_LIB_DIR}:${CUDA_TOOLKIT_ROOT_DIR}/lib64"
-)
+# Publisher executable (ROS specific)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/video_publisher.cpp")
+    add_executable(video_publisher src/video_publisher.cpp)
+    target_link_libraries(video_publisher 
+        ${catkin_LIBRARIES} 
+        ${OpenCV_LIBS}
+    )
+endif()
+
+# Publisher executable (ROS specific)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/video_subscriber_capture.cpp")
+    add_executable(video_subscriber_capture src/video_subscriber_capture.cpp)
+    target_link_libraries(video_subscriber_capture 
+        ${catkin_LIBRARIES} 
+        ${OpenCV_LIBS}
+    )
+endif()
+
+
+# Subscriber executable with CUDA (ROS specific)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/video_subscriber.cpp")
+    add_executable(video_subscriber src/video_subscriber.cpp ${SHARED_SOURCES})
+    target_link_libraries(video_subscriber 
+        PRIVATE
+        ${catkin_LIBRARIES}
+        ${OpenCV_LIBS}
+        ${TensorRT_LIBRARIES}
+        ${CUDA_CUDART_LIBRARY}
+        bytetrack
+    )
+
+    # Set CUDA properties for video_subscriber
+    set_target_properties(video_subscriber PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_RESOLVE_DEVICE_SYMBOLS ON
+    )
+
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
+        set_target_properties(video_subscriber PROPERTIES
+            CUDA_ARCHITECTURES "${CUDA_ARCH_LIST}"
+        )
+    endif()
+
+    # Set RPATH for video_subscriber
+    set_target_properties(video_subscriber PROPERTIES
+        BUILD_RPATH "${TensorRT_LIB_DIR}:${CUDA_TOOLKIT_ROOT_DIR}/lib64"
+        INSTALL_RPATH "${TensorRT_LIB_DIR}:${CUDA_TOOLKIT_ROOT_DIR}/lib64"
+    )
+endif()
+
+# Set RPATH for ROS executables
+if(TARGET video_subscriber)
+    set_target_properties(video_subscriber PROPERTIES
+        BUILD_RPATH "${TensorRT_LIB_DIR}:${CUDA_TOOLKIT_ROOT_DIR}/lib64"
+        INSTALL_RPATH "${TensorRT_LIB_DIR}:${CUDA_TOOLKIT_ROOT_DIR}/lib64"
+    )
+endif()

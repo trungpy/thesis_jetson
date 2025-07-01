@@ -3,53 +3,13 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include <image_transport/image_transport.h>
-#include <chrono>
-#include <iostream>
-#include <string>
-#include <vector>
 
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "Detect.h"
-#include <lanevision/LaneDetector.h>
+#include <app.h>
 
 using namespace std;
-
-const int WIDTH = 1280;
-const int HEIGHT = 720;
-const int FPS = 30;
-
-bool IsPathExist(const string &path)
-{
-
-    return (access(path.c_str(), F_OK) == 0);
-}
-
-bool IsFile(const string &path)
-{
-    if (!IsPathExist(path))
-    {
-        printf("%s:%d %s not exist\n", __FILE__, __LINE__, path.c_str());
-        return false;
-    }
-
-    struct stat buffer;
-    return (stat(path.c_str(), &buffer) == 0 && S_ISREG(buffer.st_mode));
-}
-
-/**
- * @brief Setting up Tensorrt logger
- */
-class Logger : public nvinfer1::ILogger
-{
-    void log(Severity severity, const char *msg) noexcept override
-    {
-        // Only output logs with severity greater than warning
-        if (severity <= Severity::kWARNING)
-            std::cout << msg << std::endl;
-    }
-} logger;
 
 class VideoSubscriber
 {
@@ -57,28 +17,44 @@ private:
     ros::NodeHandle nh_;
     image_transport::ImageTransport it_;
     image_transport::Subscriber image_sub_;
-
-    // ROS frame counting
-    int frame_count_;
-    ros::Time last_time_;
-
-    // Processing variables
-    double fps_;
-    int frameCount_;
-    int frameCountSave_;
-    std::chrono::steady_clock::time_point fpsStartTime_;
-
-    // Speed control variables
-    int maxSpeed_;    // km/h
-    int accMaxSpeed_; // km/h
-    int accSpeed_;    // km/h
-    bool saveImage_;
-
     std::string model_path_;
 
     // Detection models
     Detect model_;
     LaneDetector laneDetector_;
+
+    // Tracking variables
+    BYTETracker tracker_;
+    int frameCount_;
+    std::chrono::steady_clock::time_point fpsStartTime_;
+    double fps_;
+
+    // Speed and control variables
+    int maxSpeed_;    // km/h
+    int accMaxSpeed_; // km/h
+    int accSpeed_;    // km/h
+    float currentEgoSpeed_;
+    double lastSpeedUpdateTime_;
+    std::deque<float> speedChangeHistory_;
+    std::deque<float> distanceHistory_;
+
+    // Object tracking buffers
+    std::map<int, std::deque<float>> objectBuffers_;
+    std::map<int, float> prevDistances_;
+    std::map<int, double> prevTimes_;
+    std::map<int, float> smoothedSpeeds_;
+
+    // Target tracking variables
+    int targetId_;
+    cv::Rect bestBox_;
+    int lostTargetCount_;
+    static constexpr int MAX_LOST_FRAMES = 5;
+
+    // Switching criteria thresholds
+    static constexpr float DISTANCE_THRESHOLD = 50.0f; // pixels
+    static constexpr int FRAMES_OUTSIDE_LANE = 10;     // frames
+    int framesCurrentTargetOutsideLane_;
+
     std::string getModelPath()
     {
         ros::NodeHandle private_nh("~");
@@ -86,11 +62,11 @@ private:
         // If not found in private, try global
         if (model_path_.empty())
         {
-            nh_.param<std::string>("video_path", model_path_, "");
+            nh_.param<std::string>("model_path", model_path_, "");
         }
         if (model_path_.empty())
         {
-            ROS_ERROR("No model path specified! Use: model_path_:=/path/to/model.engine");
+            ROS_ERROR("No model path specified! Use: model_path:=/path/to/model.engine");
             ros::shutdown();
             return "";
         }
@@ -99,80 +75,44 @@ private:
 
 public:
     VideoSubscriber() : it_(nh_),
-                        frame_count_(0),
-                        fps_(0.0),
+                        model_(getModelPath(), Logger::getInstance()),
+                        laneDetector_(),
+                        tracker_(30.0, 30), // fps=30, frame_rate=30
                         frameCount_(0),
-                        frameCountSave_(0),
+                        fps_(30.0),
                         maxSpeed_(-1),
-                        accMaxSpeed_(90),
+                        accMaxSpeed_(80),
                         accSpeed_(60),
-                        saveImage_(false),
-                        model_(getModelPath(), logger), // Initialize in member init list
-                        laneDetector_()
+                        currentEgoSpeed_(initialSpeedKph),
+                        lastSpeedUpdateTime_(0),
+                        targetId_(-1),
+                        lostTargetCount_(0),
+                        framesCurrentTargetOutsideLane_(0)
     {
+        // Initialize timing
+        fpsStartTime_ = std::chrono::steady_clock::now();
+
         // Subscribe to video topic
         image_sub_ = it_.subscribe("video/image", 1,
                                    &VideoSubscriber::imageCallback, this);
 
-        last_time_ = ros::Time::now();
-        fpsStartTime_ = std::chrono::steady_clock::now();
-
         ROS_INFO("Video subscriber started. Waiting for frames...");
         ROS_INFO("Model loaded: %s", model_path_.c_str());
     }
-
     void imageCallback(const sensor_msgs::Image::ConstPtr &msg)
     {
         try
-        {
-            // Convert ROS image to OpenCV
-            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg,
-                                                               sensor_msgs::image_encodings::BGR8);
-
-            auto now = std::chrono::steady_clock::now();
-
-            if (cv_ptr->image.empty())
+        { // Convert ROS image to OpenCV format
+            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+            cv::Mat image = cv_ptr->image;
+            if (image.empty())
             {
-                ROS_WARN("Empty image received");
+                ROS_WARN("Received empty image");
                 return;
             }
 
-            // Create a copy for processing
-            cv::Mat image = cv_ptr->image.clone();
-
-            // Object detection
-            vector<Detection> objects;
-            const float ratio_h = model_.getInputH() / (float)image.rows;
-            const float ratio_w = model_.getInputW() / (float)image.cols;
-
-            model_.preprocess(image);
-            model_.infer();
-            model_.postprocess(objects);
-
-            // Lane detection
-            std::vector<cv::Vec4i> lanes = laneDetector_.detectLanes(image);
-
-            // Process detected objects
-            processDetections(image, objects, lanes);
-
-            // Draw results
-            model_.draw(image, objects);
-            laneDetector_.drawLanes(image, lanes);
-
-            // Calculate and display FPS
-            calculateFPS(now);
-            drawOverlays(image);
-
-            // Save image if needed
-            if (saveImage_)
-            {
-                saveFrame(image);
-                saveImage_ = false;
-            }
-
-            // Display the processed frame
-            cv::imshow("Processed Video", image);
-            cv::waitKey(1);
+            // Process the frame
+            processFrame(image);
         }
         catch (cv_bridge::Exception &e)
         {
@@ -185,132 +125,205 @@ public:
     }
 
 private:
-    void processDetections(cv::Mat &image, const vector<Detection> &objects, const std::vector<cv::Vec4i> &lanes)
+    void processFrame(cv::Mat &image)
     {
-        const float ratio_h = model_.getInputH() / (float)image.rows;
-        const float ratio_w = model_.getInputW() / (float)image.cols;
+        auto now = std::chrono::steady_clock::now();
+        auto start = std::chrono::system_clock::now();
+        double timeStart = this->getCurrentTimeInSeconds();
 
-        for (const auto &obj : objects)
+        // Object detection
+        std::vector<Detection> res;
+        model_.preprocess(image);
+        model_.infer();
+        model_.postprocess(image, res);
+
+        std::vector<Object> objects = filterDetections(res);
+        std::vector<cv::Vec4i> lanes = laneDetector_.detectLanes(image);
+
+        // Tracking
+        std::vector<STrack> outputStracks = tracker_.update(objects);
+
+        auto end = std::chrono::system_clock::now();
+
+        model_.draw(image, outputStracks);
+
+        // --- Ego Vehicle Speed Control Logic ---
+        int detectedTargetId = -1;
+        cv::Rect bestBoxTmp;
+        float maxBottomY = -1;
+        bool currentTargetStillExists = false;
+        bool currentTargetInLane = false;
+        float currentTargetBottomY = -1;
+
+        // First, check if our current target still exists and update its bounding box
+        if (targetId_ != -1)
         {
-            auto box = obj.bbox;
-            auto class_id = obj.class_id;
-            auto conf = obj.conf;
+            auto it = std::find_if(outputStracks.begin(), outputStracks.end(),
+                                   [this](const STrack &obj)
+                                   { return obj.track_id == targetId_; });
 
-            // Adjust box back to original image size
-            if (ratio_h > ratio_w)
+            if (it != outputStracks.end())
             {
-                box.x = box.x / ratio_w;
-                box.y = (box.y - (model_.getInputH() - ratio_w * image.rows) / 2) / ratio_w;
-                box.width = static_cast<int>(box.width / ratio_w);
-                box.height = static_cast<int>(box.height / ratio_w);
-            }
-            else
-            {
-                box.x = (box.x - (model_.getInputW() - ratio_h * image.cols) / 2) / ratio_h;
-                box.y = box.y / ratio_h;
-                box.width = static_cast<int>(box.width / ratio_h);
-                box.height = static_cast<int>(box.height / ratio_h);
-            }
-
-            // Clamp box coordinates to image size
-            box.x = std::max(0.0f, static_cast<float>(box.x));
-            box.y = std::max(0.0f, static_cast<float>(box.y));
-            box.width = std::min(static_cast<float>(box.width), static_cast<float>(image.cols - box.x));
-            box.height = std::min(static_cast<float>(box.height), static_cast<float>(image.rows - box.y));
-
-            cv::Point bottom_center(box.x + box.width / 2, box.y + box.height);
-
-            // Check if vehicle is in lane
-            if (lanes.size() >= 2)
-            {
-                checkVehicleInLane(image, lanes, bottom_center, obj);
-            }
-
-            // Check for speed limit signs
-            if (class_id >= 12 && class_id <= 17 && conf > 0.9)
-            {
-                int newSpeed = (class_id - 9) * 10; // class_id 12 -> 30km/h, 13 -> 40, etc.
-                maxSpeed_ = newSpeed;
-                saveImage_ = true;
-                ROS_INFO("Class_id: %d", class_id);
-                ROS_INFO("Speed limit detected: %d km/h", newSpeed);
+                currentTargetStillExists = true;
+                const auto &tlbr = it->tlbr;
+                bestBox_ = cv::Rect(tlbr[0], tlbr[1], tlbr[2] - tlbr[0], tlbr[3] - tlbr[1]);
+                currentTargetBottomY = tlbr[3];
             }
         }
-    }
 
-    void checkVehicleInLane(cv::Mat &image, const std::vector<cv::Vec4i> &lanes,
-                            const cv::Point &bottom_center, const Detection &obj)
-    {
-        // Get 2 lanes (left - right)
-        cv::Vec4i l0 = lanes[0];
-        cv::Vec4i l1 = lanes[1];
-
-        // Create a polygon for the lane area
-        std::vector<cv::Point> lane_area = {
-            cv::Point(l0[0], l0[1]), // top-left
-            cv::Point(l1[0], l1[1]), // top-right
-            cv::Point(l1[2], l1[3]), // bottom-right
-            cv::Point(l0[2], l0[3])  // bottom-left
-        };
-
-        // Only consider car/bus/truck
-        if (obj.class_id == 2 || obj.class_id == 4 || obj.class_id == 5)
+        // Log detected objects and find lane candidates
+        for (const STrack &obj : outputStracks)
         {
-            if (cv::pointPolygonTest(lane_area, bottom_center, false) >= 0)
+            const auto &tlbr = obj.tlbr;
+            float h = tlbr[3] - tlbr[1];
+            if (h > 400)
+                continue;
+
+            int classId = obj.classId;
+            float conf = obj.score;
+
+            // Detect speed limit signs
+            if (classId >= 12 && classId <= 17 && conf > 0.6f)
             {
-                // Vehicle is in the lane - draw green dot
-                cv::Point mid(obj.bbox.x + obj.bbox.width / 2,
-                              obj.bbox.y + obj.bbox.height / 2);
-                cv::circle(image, mid, 5, cv::Scalar(0, 255, 0), -1);
+                maxSpeed_ = (classId - 9) * 10;
+            }
+
+            // Detect vehicles in lane
+            if ((classId == 2 || classId == 4 || classId == 5) && lanes.size() >= 2)
+            {
+                cv::Point bottom_center((tlbr[0] + tlbr[2]) / 2.0f, tlbr[3]);
+
+                std::vector<cv::Point> lane_area = {{lanes[0][0], lanes[0][1]},
+                                                    {lanes[1][0], lanes[1][1]},
+                                                    {lanes[1][2], lanes[1][3]},
+                                                    {lanes[0][2], lanes[0][3]}};
+
+                // Check if vehicle is in lane
+                if (cv::pointPolygonTest(lane_area, bottom_center, false) >= 0)
+                {
+                    cv::Point center((tlbr[0] + tlbr[2]) / 2.0f, (tlbr[1] + tlbr[3]) / 2.0f);
+                    cv::circle(image, center, 5, cv::Scalar(0, 255, 0), -1);
+
+                    // Check if this is our current target
+                    if (obj.track_id == targetId_)
+                    {
+                        currentTargetInLane = true;
+                        lostTargetCount_ = 0;                // Reset lost counter
+                        framesCurrentTargetOutsideLane_ = 0; // Reset outside lane counter
+                    }
+                    // Consider new targets (even if we have a current target)
+                    else if (tlbr[3] > maxBottomY)
+                    {
+                        bestBoxTmp = cv::Rect(tlbr[0], tlbr[1], tlbr[2] - tlbr[0], h);
+                        detectedTargetId = obj.track_id;
+                        maxBottomY = tlbr[3]; // update closest
+                    }
+                }
             }
         }
-    }
 
-    void calculateFPS(const std::chrono::steady_clock::time_point &now)
-    {
+        // Update outside lane counter
+        if (targetId_ != -1 && !currentTargetInLane)
+        {
+            framesCurrentTargetOutsideLane_++;
+        }
+
+        // Target switching logic
+        bool shouldSwitchTarget = false;
+        std::string switchReason = "";
+
+        if (targetId_ == -1)
+        {
+            // No current target - assign new one if found in lane
+            if (detectedTargetId != -1)
+            {
+                shouldSwitchTarget = true;
+                switchReason = "No current target";
+            }
+        }
+        else if (!currentTargetStillExists)
+        {
+            // Current target disappeared from tracking
+            lostTargetCount_++;
+            if (lostTargetCount_ >= MAX_LOST_FRAMES)
+            {
+                if (detectedTargetId != -1)
+                {
+                    shouldSwitchTarget = true;
+                    switchReason = "Current target lost";
+                }
+                else
+                {
+                    targetId_ = -1; // No replacement available
+                    lostTargetCount_ = 0;
+                }
+            }
+        }
+        else if (detectedTargetId != -1 && detectedTargetId != targetId_)
+        {
+            // We have both current and new target candidates
+            // Check switching criteria:
+
+            // 1. Current target has been outside lane detection for too long
+            if (framesCurrentTargetOutsideLane_ >= FRAMES_OUTSIDE_LANE)
+            {
+                shouldSwitchTarget = true;
+                switchReason = "Current target outside lane too long";
+            }
+            // 2. New target is significantly closer (more relevant for following)
+            else if (currentTargetInLane &&
+                     (maxBottomY - currentTargetBottomY) > DISTANCE_THRESHOLD)
+            {
+                shouldSwitchTarget = true;
+                switchReason = "New target significantly closer";
+            }
+            // 3. Current target not in lane but new target is
+            else if (!currentTargetInLane)
+            {
+                shouldSwitchTarget = true;
+                switchReason = "New target in lane, current not";
+            }
+        }
+
+        // Execute target switch if needed
+        if (shouldSwitchTarget && detectedTargetId != -1)
+        {
+            targetId_ = detectedTargetId;
+            bestBox_ = bestBoxTmp;
+            lostTargetCount_ = 0;
+            framesCurrentTargetOutsideLane_ = 0;
+
+            // Debug output
+            ROS_INFO("Target switched to ID %d - Reason: %s", targetId_, switchReason.c_str());
+        }
+
+        // Speed control logic
+        std::string action = "FREE DRIVE";
+        cv::Scalar actionColor = cv::Scalar(0, 255, 0);
+        float avgDistance = 0.0f;
+        float frontAbsoluteSpeed = 0.0f;
+        updateSpeedControl(timeStart, targetId_, bestBox_, currentEgoSpeed_, lastSpeedUpdateTime_,
+                           objectBuffers_, prevDistances_, prevTimes_, smoothedSpeeds_,
+                           speedChangeHistory_, avgDistance, frontAbsoluteSpeed, action,
+                           actionColor);
+
+        // Always display information on frame
+        drawHUD(image, currentEgoSpeed_, accSpeed_, accMaxSpeed_, maxSpeed_, frontAbsoluteSpeed,
+                avgDistance, action, actionColor, fps_, targetId_);
+
+        laneDetector_.drawLanes(image, lanes);
+
+        // FPS calculation
         frameCount_++;
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - fpsStartTime_).count();
-
         if (elapsed >= 1)
         {
             fps_ = frameCount_ / static_cast<double>(elapsed);
             frameCount_ = 0;
             fpsStartTime_ = now;
         }
-    }
 
-    void drawOverlays(cv::Mat &image)
-    {
-        // Draw FPS
-        cv::putText(image, cv::format("FPS: %.2f", fps_), cv::Point(10, 30),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
-
-        // Draw max speed
-        if (maxSpeed_ != -1)
-        {
-            cv::putText(image, cv::format("Max Speed: %dKm/h", maxSpeed_), cv::Point(10, 60),
-                        cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 0, 0), 2);
-        }
-        else
-        {
-            cv::putText(image, "No Speed Limit Detected", cv::Point(10, 60),
-                        cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 0, 0), 2);
-        }
-
-        // Draw Cruise Control
-        cv::putText(image, cv::format("Max Cruise Control: %dKm/h", accMaxSpeed_), cv::Point(10, 90),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 255), 2);
-
-        // Draw control speed
-        cv::putText(image, cv::format("Control speed: %dKm/h", accSpeed_), cv::Point(10, 120),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
-
-        // Update speed control logic
-        updateSpeedControl();
-    }
-
-    void updateSpeedControl()
-    {
+        // Speed limit control
         if (maxSpeed_ != -1)
         {
             if (accSpeed_ < maxSpeed_ && accSpeed_ < accMaxSpeed_)
@@ -326,15 +339,15 @@ private:
         {
             accSpeed_ = accMaxSpeed_; // Reset to max speed if no speed limit detected
         }
+
+        // Display result (optional - you might want to publish instead)
+        cv::imshow("Result", image);
+        cv::waitKey(1);
     }
 
-    void saveFrame(const cv::Mat &image)
+    double getCurrentTimeInSeconds()
     {
-        std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, 95};
-        std::string filename = std::to_string(frameCountSave_) + ".jpg";
-        cv::imwrite(filename, image, params);
-        frameCountSave_++;
-        ROS_INFO("Saved frame: %s", filename.c_str());
+        return ros::Time::now().toSec();
     }
 };
 

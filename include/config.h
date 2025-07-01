@@ -45,7 +45,7 @@ constexpr float minSpeedThreshold = 2.0f;
 // ================================
 // Adaptive Speed Control Settings
 // ================================
-constexpr float initialSpeedKph = 60.0f;
+constexpr float initialSpeedKph = 50.0f;
 constexpr float cruiseSpeedKph = 80.0f;           // Desired cruising speed when no obstacles
 constexpr float targetFollowingDistance = 25.0f;  // meters
 constexpr float minFollowingDistance = 10.0f;     // meters
