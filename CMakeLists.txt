@@ -2,9 +2,19 @@ cmake_minimum_required(VERSION 3.10)
 project(thesis LANGUAGES CXX CUDA)
 
 ## Compile as C++14 (reliable with CUDA 11.0)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Include cmake modules
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+# Find dependencies
+include(FindCUDAConfig)
+include(FindOpenCVConfig)
+include(FindTensorRTConfig)
+
+
 
 ## Find catkin
 find_package(catkin REQUIRED COMPONENTS
