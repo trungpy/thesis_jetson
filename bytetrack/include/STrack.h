@@ -30,6 +30,11 @@ class STrack {
     void activate(byte_kalman::KalmanFilter &kalman_filter, int frame_id);
     void re_activate(STrack &new_track, int frame_id, bool new_id = false);
     void update(STrack &new_track, int frame_id);
+    inline static FrontDistanceEstimator estimator{0, 0};
+    static void initializeEstimator() {
+        estimator = FrontDistanceEstimator(Config::config.camera.focalLength,
+                                           Config::config.camera.realObjectWidth);
+    }
 
    public:
     bool is_activated;
@@ -51,5 +56,4 @@ class STrack {
 
    private:
     byte_kalman::KalmanFilter kalman_filter;
-    static FrontDistanceEstimator estimator;
 };

@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Find package for json
-find_package(nlohmann_json REQUIRED)
+find_package(nlohmann_json REQUIRED HINTS /usr/lib/cmake)
 # Include cmake modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -205,7 +205,8 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/video_subscriber.cpp")
         ${OpenCV_LIBS}
         ${TensorRT_LIBRARIES}
         ${CUDA_CUDART_LIBRARY}
-        bytetrack nlohmann_json::nlohmann_json
+        bytetrack 
+        nlohmann_json
     )
 
     # Set CUDA properties for video_subscriber

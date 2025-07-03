@@ -1,5 +1,4 @@
 #include "STrack.h"
-
 STrack::STrack(vector<float> tlwh_, float score, int classId) {
     _tlwh.resize(4);
     _tlwh.assign(tlwh_.begin(), tlwh_.end());
@@ -76,7 +75,6 @@ void STrack::re_activate(STrack &new_track, int frame_id, bool new_id) {
     this->score = new_track.score;
     if (new_id) this->track_id = next_id();
 }
-FrontDistanceEstimator STrack::estimator(Config::focalLength, Config::realObjectWidth);
 
 void STrack::update(STrack &new_track, int frame_id) {
     this->frame_id = frame_id;

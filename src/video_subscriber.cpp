@@ -8,8 +8,10 @@
 
 #include <opencv2/opencv.hpp>
 
-using namespace std;
+#include "EgoVehicle.h"
 
+using namespace std;
+using namespace Config;
 class VideoSubscriber {
    private:
     ros::NodeHandle nh_;
@@ -28,9 +30,8 @@ class VideoSubscriber {
     double fps_;
 
     // Speed and control variables
-    int maxSpeed_;     // km/h
-    int accMaxSpeed_;  // km/h
-    int accSpeed_;     // km/h
+    int maxSpeed_;  // km/h
+    int accSpeed_;  // km/h
     float currentEgoSpeed_;
     double lastSpeedUpdateTime_;
     std::deque<float> speedChangeHistory_;
@@ -42,6 +43,8 @@ class VideoSubscriber {
     std::map<int, double> prevTimes_;
     std::map<int, float> smoothedSpeeds_;
 
+    // Speed control logic
+    std::string action = "FREE DRIVE";
     // Target tracking variables
     int targetId_;
     cv::Rect bestBox_;
@@ -77,9 +80,8 @@ class VideoSubscriber {
           frameCount_(0),
           fps_(30.0),
           maxSpeed_(-1),
-          accMaxSpeed_(80),
           accSpeed_(60),
-          currentEgoSpeed_(initialSpeedKph),
+          currentEgoSpeed_(config.speedControl.initialSpeedKph),
           lastSpeedUpdateTime_(0),
           targetId_(-1),
           lostTargetCount_(0),
@@ -260,21 +262,27 @@ class VideoSubscriber {
             ROS_INFO("Target switched to ID %d - Reason: %s", targetId_, switchReason.c_str());
         }
 
-        // Speed control logic
-        std::string action = "FREE DRIVE";
         cv::Scalar actionColor = cv::Scalar(0, 255, 0);
         float avgDistance = 0.0f;
         float frontAbsoluteSpeed = 0.0f;
-        updateSpeedControl(timeStart, targetId_, bestBox_, currentEgoSpeed_, lastSpeedUpdateTime_,
-                           objectBuffers_, prevDistances_, prevTimes_, smoothedSpeeds_,
-                           speedChangeHistory_, avgDistance, frontAbsoluteSpeed, action,
-                           actionColor);
-
-        // Always display information on frame
-        drawHUD(image, currentEgoSpeed_, accSpeed_, accMaxSpeed_, maxSpeed_, frontAbsoluteSpeed,
-                avgDistance, action, actionColor, fps_, targetId_);
+        EgoVehicle::updateSpeedControl(timeStart, targetId_, bestBox_, currentEgoSpeed_,
+                                       lastSpeedUpdateTime_, objectBuffers_, prevDistances_,
+                                       prevTimes_, smoothedSpeeds_, speedChangeHistory_,
+                                       avgDistance, frontAbsoluteSpeed, action, actionColor);
 
         laneDetector_.drawLanes(image, lanes);
+
+        // Speed limit control
+        if (maxSpeed_ != -1) {
+            if (accSpeed_ < maxSpeed_ && accSpeed_ < config.speedControl.cruiseSpeedKph) {
+                accSpeed_ += 1;  // Increase speed by 1 km/h
+            } else if (accSpeed_ > maxSpeed_ && accSpeed_ > 0) {
+                accSpeed_ -= 1;  // Decrease speed by 1 km/h
+            }
+        } else {
+            accSpeed_ = config.speedControl
+                            .cruiseSpeedKph;  // Reset to max speed if no speed limit detected
+        }
 
         // FPS calculation
         frameCount_++;
@@ -285,49 +293,67 @@ class VideoSubscriber {
             frameCount_ = 0;
             fpsStartTime_ = now;
         }
-
-        // Speed limit control
-        if (maxSpeed_ != -1) {
-            if (accSpeed_ < maxSpeed_ && accSpeed_ < accMaxSpeed_) {
-                accSpeed_ += 1;  // Increase speed by 1 km/h
-            } else if (accSpeed_ > maxSpeed_ && accSpeed_ > 0) {
-                accSpeed_ -= 1;  // Decrease speed by 1 km/h
-            }
-        } else {
-            accSpeed_ = accMaxSpeed_;  // Reset to max speed if no speed limit detected
-        }
-
+        // Always display information on frame
+        drawHUD(image, currentEgoSpeed_, accSpeed_, maxSpeed_, frontAbsoluteSpeed, avgDistance,
+                action, actionColor, fps_, targetId_);
         // Display result (optional - you might want to publish instead)
         cv::imshow("Result", image);
         cv::waitKey(1);
     }
-
-    double getCurrentTimeInSeconds() { return ros::Time::now().toSec(); }
 };
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "video_subscriber_test");
 
     try {
+        // Initialize video subscriber object
         VideoSubscriber subscriber;
 
         ROS_INFO("Advanced video subscriber test running...");
         ROS_INFO("Subscribing to: /video/image");
         ROS_INFO("Features: Object detection, Lane detection, Speed control");
+
         // Load configuration from JSON file
         std::cout << "🔧 Loading configuration..." << std::endl;
-        Config::loadConfig("config.json");
+        try {
+            Config::loadConfig(
+                "/home/trung/catkin_ws/src/thesis/config.json");  // This might throw if the file is
+                                                                  // not found or invalid.
+        } catch (const std::exception &e) {
+            ROS_ERROR("Failed to load config.json: %s", e.what());
+            return -1;
+        }
+
+        // Retrieve camera settings and log them
         CameraSettings cameraSettings = Config::config.camera;
-        std::cout << cameraSettings.focalLength << "focalLength" << cameraSettings.realObjectWidth
-                  << " @ " << cameraSettings.fps << " FPS\n";
+        if (cameraSettings.focalLength == 0 || cameraSettings.realObjectWidth == 0) {
+            ROS_WARN("Camera settings might be incomplete. Focal Length: %f, Real Object Width: %f",
+                     cameraSettings.focalLength, cameraSettings.realObjectWidth);
+        }
+
+        std::cout << "Camera settings loaded:\n";
+        std::cout << "Focal Length: " << cameraSettings.focalLength << " mm\n";
+        std::cout << "Real Object Width: " << cameraSettings.realObjectWidth << " m\n";
+        std::cout << "FPS: " << cameraSettings.fps << " FPS\n";
+
         std::cout << "✅ Configuration loaded successfully.\n";
-        STrack::initializeEstimator();
+
+        // Initialize the tracking estimator
+        try {
+            STrack::initializeEstimator();
+        } catch (const std::exception &e) {
+            ROS_ERROR("Failed to initialize tracking estimator: %s", e.what());
+            return -1;
+        }
+
+        // Start processing
         ros::spin();
     } catch (const std::exception &e) {
         ROS_ERROR("Exception in main: %s", e.what());
         return -1;
     }
 
+    // Clean up OpenCV windows if any
     cv::destroyAllWindows();
     return 0;
 }
