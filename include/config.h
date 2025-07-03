@@ -13,81 +13,92 @@
 
 #ifndef CONFIG_H
 #define CONFIG_H
+
+#include <nlohmann/json.hpp>
 #include <opencv2/core.hpp>
 #include <string>
 #include <vector>
+
 namespace Config {
 
-// ========================
-// Camera & Frame Settings
-// ========================
-constexpr int width = 1280;
-constexpr int height = 720;
-constexpr int fps = 30;
-constexpr float focalLength = 1778.0f;   // pixels
-constexpr float realObjectWidth = 0.7f;  // meters (average width of a car)
+// Structs to organize configuration data
+struct CameraSettings {
+    int width;
+    int height;
+    int fps;
+    float focalLength;
+    float realObjectWidth;
+};
 
-// ==========================
-// Region of Interest (ROI)
-// ==========================
-constexpr float xMin = 290.0f;
-constexpr float xMax = 330.0f;
+struct ROI {
+    float xMin;
+    float xMax;
+};
 
-// =============================
-// Distance & Speed Estimation
-// =============================
-constexpr float maxValidSpeedKph = 90.0f;
-constexpr float minDistDelta = 0.3f;
-constexpr float smoothingFactor = 0.2f;
-constexpr float minTimeDelta = 0.15f;
-constexpr float minSpeedThreshold = 2.0f;
+struct DistanceSpeedEstimation {
+    float maxValidSpeedKph;
+    float minDistDelta;
+    float smoothingFactor;
+    float minTimeDelta;
+    float minSpeedThreshold;
+};
 
-// ================================
-// Adaptive Speed Control Settings
-// ================================
-constexpr float initialSpeedKph = 50.0f;
-constexpr float cruiseSpeedKph = 80.0f;           // Desired cruising speed when no obstacles
-constexpr float targetFollowingDistance = 25.0f;  // meters
-constexpr float minFollowingDistance = 10.0f;     // meters
-constexpr float criticalDistance = 5.0f;          // meters - emergency braking
+struct AdaptiveSpeedControl {
+    float initialSpeedKph;
+    int cruiseSpeedKph;
+    float targetFollowingDistance;
+    float minFollowingDistance;
+    float criticalDistance;
+};
 
-// ======================================
-// Speed Adjustment Parameters (Control)
-// ======================================
-constexpr float speedUpdateInterval = 0.5f;    // seconds - update interval
-constexpr float gentleAdjustment = 1.0f;       // km/h per update (gentle)
-constexpr float moderateAdjustment = 5.0f;     // km/h per update (moderate)
-constexpr float aggressiveAdjustment = 10.0f;  // km/h per update (urgent)
-constexpr float minSpeedKph = 20.0f;
-constexpr float maxSpeedKph = 120.0f;
+struct SpeedAdjustment {
+    float speedUpdateInterval;
+    float gentleAdjustment;
+    float moderateAdjustment;
+    float aggressiveAdjustment;
+    float minSpeedKph;
+    float maxSpeedKph;
+};
 
-// =======================
-// Object Tracking Config
-// =======================
-const std::vector<int> trackClasses = {0, 1, 2,
-                                       3, 5, 7};  // person, bicycle, car, motorcycle, bus, truck
+struct ObjectTracking {
+    std::vector<int> trackClasses;
+    std::vector<std::string> classNames;
+    std::vector<std::vector<unsigned int>> colors;  // RGB colors for each class
+};
 
-const std::vector<std::string> classNames = {
-    "person",          "bicycle",      "car",           "motorcycle",       "bus",
-    "truck",           "stop sign",    "other-vehicle", "crosswalk",        "red light",
-    "yellow light",    "green light",  "Limit 30km-h",  "Limit 40km-h",     "Limit 50km-h",
-    "Limit 60km-h",    "Limit 70km-h", "Limit 80km-h",  "End Limit 60km-h", "End Limit 70km-h",
-    "End Limit 80km-h"};
+struct DetectConfig {
+    // Confidence threshold for filtering detections
+    float confThreshold;
 
-const std::vector<std::vector<unsigned int>> colors = {
-    {220, 20, 60},  {119, 172, 48}, {0, 114, 189},   {237, 177, 32},  {126, 47, 142},
-    {217, 83, 25},  {255, 0, 0},    {153, 153, 153}, {255, 255, 255}, {255, 0, 0},
-    {255, 255, 0},  {0, 255, 0},    {170, 255, 0},   {200, 255, 0},   {255, 255, 0},
-    {255, 200, 0},  {255, 170, 0},  {255, 85, 0},    {180, 180, 180}, {140, 140, 140},
-    {100, 100, 100}};
+    // Non-Maximum Suppression (NMS) threshold to remove duplicate boxes
+    float nmsThreshold;
+};
+
+// Main configuration structure
+struct Configuration {
+    DetectConfig detectConfig;  // Detection configuration
+    CameraSettings camera;
+    ROI roi;
+    DistanceSpeedEstimation distanceSpeed;
+    AdaptiveSpeedControl speedControl;
+    SpeedAdjustment speedAdjustment;
+    ObjectTracking objectTracking;
+};
+
+// Global configuration instance
+extern Configuration config;
+
+// HUD colors (not loaded from JSON)
+extern const cv::Scalar white;
+extern const cv::Scalar red;
+extern const cv::Scalar yellow;
+extern const cv::Scalar orange;
+extern const cv::Scalar green;
+extern const cv::Scalar gray;
+
+// Initialization function
+void loadConfig(const std::string& configPath);
+
 }  // namespace Config
-
-// Define better HUD colors
-const cv::Scalar white(255, 255, 255);
-const cv::Scalar red(68, 68, 255);      // BGR for #FF4444
-const cv::Scalar yellow(0, 255, 255);   // BGR for #FFFF00
-const cv::Scalar orange(0, 165, 255);   // BGR for #FFA500
-const cv::Scalar green(102, 255, 102);  // BGR for #66FF66
-const cv::Scalar gray(180, 180, 180);
 
 #endif  // CONFIG_H

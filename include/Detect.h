@@ -74,15 +74,6 @@ class Detect {
     // Maximum supported image size (used for memory allocation checks)
     const int MAX_IMAGE_SIZE = 4096 * 4096;
 
-    // Confidence threshold for filtering detections
-    float conf_threshold = 0.5f;
-
-    // Non-Maximum Suppression (NMS) threshold to remove duplicate boxes
-    float nms_threshold = 0.5f;
-
-    // Colors for drawing bounding boxes for each class
-    vector<Scalar> colors;
-
     // Build TensorRT engine from an ONNX model file (if applicable)
     void build(std::string onnxPath, nvinfer1::ILogger& logger);
 

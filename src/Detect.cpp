@@ -14,6 +14,8 @@ static Logger logger;
 #define isFP16 true
 #define warmup true
 
+using namespace Config;
+
 Detect::Detect(string model_path, nvinfer1::ILogger &logger) {
     // Deserialize an engine
     if (model_path.find(".onnx") == std::string::npos) {
@@ -146,7 +148,7 @@ void Detect::postprocess(Mat &image, vector<Detection> &output) {
         double score;
         minMaxLoc(classes_scores, nullptr, &score, nullptr, &class_id_point);
 
-        if (score > conf_threshold) {
+        if (score > config.detectConfig.confThreshold) {
             const float cx = det_output.at<float>(0, i);
             const float cy = det_output.at<float>(1, i);
             const float ow = det_output.at<float>(2, i);
@@ -164,7 +166,8 @@ void Detect::postprocess(Mat &image, vector<Detection> &output) {
     }
 
     vector<int> nms_result;
-    dnn::NMSBoxes(boxes, confidences, conf_threshold, nms_threshold, nms_result);
+    dnn::NMSBoxes(boxes, confidences, config.detectConfig.confThreshold,
+                  config.detectConfig.nmsThreshold, nms_result);
 
     for (int i = 0; i < nms_result.size(); i++) {
         Detection result;
@@ -261,10 +264,10 @@ void Detect::draw(cv::Mat &image, const std::vector<STrack> &output) {
         cv::Rect box(tlwh[0], tlwh[1], tlwh[2], tlwh[3]);
 
         int classId = detection.classId;
-        float conf = detection.score;
 
-        cv::Scalar color(Config::colors[classId][0], Config::colors[classId][1],
-                         Config::colors[classId][2]);
+        cv::Scalar color(config.objectTracking.colors[classId][0],
+                         config.objectTracking.colors[classId][1],
+                         config.objectTracking.colors[classId][2]);
 
         // Draw rectangle
         cv::rectangle(image, box, color, 2);
@@ -281,14 +284,19 @@ void Detect::draw(cv::Mat &image, const std::vector<STrack> &output) {
 
         // Prepare and draw label with smaller font
         std::ostringstream label_ss;
-        label_ss << detection.track_id << ". " << Config::classNames[classId] << " " << std::fixed
-                 << std::setprecision(2) << conf;
+        label_ss << config.objectTracking.classNames[classId] << "."
+                 << std::fixed << std::setprecision(2) << detection.score;
 
         std::string label = label_ss.str();
 
         // Smaller font for main label
         cv::putText(image, label, cv::Point(box.x + 2, box.y - 5), cv::FONT_HERSHEY_SIMPLEX, 0.4,
                     cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
+
+
+        cv::putText(image, cv::format("%d",detection.track_id), cv::Point(box.x + 2, box.y + box.height - 5),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 255, 255),
+                    1, cv::LINE_AA);
     }
 }
 

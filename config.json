@@ -1,0 +1,67 @@
+{
+  "camera": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30,
+    "focalLength": 1778.0,
+    "realObjectWidth": 0.7
+  },
+  "roi": {
+    "xMin": 290.0,
+    "xMax": 330.0
+  },
+  "detectConfig": {
+    "confThreshold": 0.5,
+    "nmsThreshold": 0.5
+  },
+  "distanceSpeedEstimation": {
+    "maxValidSpeedKph": 100.0,
+    "minDistDelta": 0.5,
+    "smoothingFactor": 0.3,
+    "minTimeDelta": 0.2,
+    "minSpeedThreshold": 1.0
+  },
+  "adaptiveSpeedControl": {
+    "initialSpeedKph": 50.0,
+    "cruiseSpeedKph": 70,
+    "targetFollowingDistance": 25.0,
+    "minFollowingDistance": 8.0,
+    "criticalDistance": 4.0
+  },
+  "speedAdjustment": {
+    "speedUpdateInterval": 0.5,
+    "gentleAdjustment": 2.0,
+    "moderateAdjustment": 5.0,
+    "aggressiveAdjustment": 8.0,
+    "minSpeedKph": 10.0,
+    "maxSpeedKph": 100.0
+  },
+  "objectTracking": {
+    "trackClasses": [
+      2
+    ],
+    "classNames": [
+      "person",
+      "bicycle",
+      "car",
+      "motorcycle",
+      "bus",
+      "truck",
+      "stop sign",
+      "other-vehicle",
+      "crosswalk",
+      "red light",
+      "yellow light",
+      "green light",
+      "Limit 30km-h",
+      "Limit 40km-h",
+      "Limit 50km-h",
+      "Limit 60km-h",
+      "Limit 70km-h",
+      "Limit 80km-h",
+      "End Limit 60km-h",
+      "End Limit 70km-h",
+      "End Limit 80km-h"
+    ]
+  }
+}

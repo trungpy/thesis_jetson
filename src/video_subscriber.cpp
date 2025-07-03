@@ -1,19 +1,17 @@
+#include <app.h>
+#include <cv_bridge/cv_bridge.h>
+#include <image_transport/image_transport.h>
 #include <ros/ros.h>
 #include <sensor_msgs/Image.h>
-#include <cv_bridge/cv_bridge.h>
-#include <opencv2/opencv.hpp>
-#include <image_transport/image_transport.h>
-
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <app.h>
+#include <opencv2/opencv.hpp>
 
 using namespace std;
 
-class VideoSubscriber
-{
-private:
+class VideoSubscriber {
+   private:
     ros::NodeHandle nh_;
     image_transport::ImageTransport it_;
     image_transport::Subscriber image_sub_;
@@ -30,9 +28,9 @@ private:
     double fps_;
 
     // Speed and control variables
-    int maxSpeed_;    // km/h
-    int accMaxSpeed_; // km/h
-    int accSpeed_;    // km/h
+    int maxSpeed_;     // km/h
+    int accMaxSpeed_;  // km/h
+    int accSpeed_;     // km/h
     float currentEgoSpeed_;
     double lastSpeedUpdateTime_;
     std::deque<float> speedChangeHistory_;
@@ -51,21 +49,18 @@ private:
     static constexpr int MAX_LOST_FRAMES = 5;
 
     // Switching criteria thresholds
-    static constexpr float DISTANCE_THRESHOLD = 50.0f; // pixels
-    static constexpr int FRAMES_OUTSIDE_LANE = 10;     // frames
+    static constexpr float DISTANCE_THRESHOLD = 50.0f;  // pixels
+    static constexpr int FRAMES_OUTSIDE_LANE = 10;      // frames
     int framesCurrentTargetOutsideLane_;
 
-    std::string getModelPath()
-    {
+    std::string getModelPath() {
         ros::NodeHandle private_nh("~");
         private_nh.param<std::string>("model_path", model_path_, "");
         // If not found in private, try global
-        if (model_path_.empty())
-        {
+        if (model_path_.empty()) {
             nh_.param<std::string>("model_path", model_path_, "");
         }
-        if (model_path_.empty())
-        {
+        if (model_path_.empty()) {
             ROS_ERROR("No model path specified! Use: model_path:=/path/to/model.engine");
             ros::shutdown();
             return "";
@@ -73,63 +68,55 @@ private:
         return model_path_;
     }
 
-public:
-    VideoSubscriber() : it_(nh_),
-                        model_(getModelPath(), Logger::getInstance()),
-                        laneDetector_(),
-                        tracker_(30.0, 30), // fps=30, frame_rate=30
-                        frameCount_(0),
-                        fps_(30.0),
-                        maxSpeed_(-1),
-                        accMaxSpeed_(80),
-                        accSpeed_(60),
-                        currentEgoSpeed_(initialSpeedKph),
-                        lastSpeedUpdateTime_(0),
-                        targetId_(-1),
-                        lostTargetCount_(0),
-                        framesCurrentTargetOutsideLane_(0)
-    {
+   public:
+    VideoSubscriber()
+        : it_(nh_),
+          model_(getModelPath(), Logger::getInstance()),
+          laneDetector_(),
+          tracker_(30.0, 30),  // fps=30, frame_rate=30
+          frameCount_(0),
+          fps_(30.0),
+          maxSpeed_(-1),
+          accMaxSpeed_(80),
+          accSpeed_(60),
+          currentEgoSpeed_(initialSpeedKph),
+          lastSpeedUpdateTime_(0),
+          targetId_(-1),
+          lostTargetCount_(0),
+          framesCurrentTargetOutsideLane_(0) {
         // Initialize timing
         fpsStartTime_ = std::chrono::steady_clock::now();
 
         // Subscribe to video topic
-        image_sub_ = it_.subscribe("video/image", 1,
-                                   &VideoSubscriber::imageCallback, this);
+        image_sub_ = it_.subscribe("video/image", 1, &VideoSubscriber::imageCallback, this);
 
         ROS_INFO("Video subscriber started. Waiting for frames...");
         ROS_INFO("Model loaded: %s", model_path_.c_str());
     }
-    void imageCallback(const sensor_msgs::Image::ConstPtr &msg)
-    {
-        try
-        { // Convert ROS image to OpenCV format
-            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+    void imageCallback(const sensor_msgs::Image::ConstPtr &msg) {
+        try {  // Convert ROS image to OpenCV format
+            cv_bridge::CvImagePtr cv_ptr =
+                cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
             cv::Mat image = cv_ptr->image;
-            if (image.empty())
-            {
+            if (image.empty()) {
                 ROS_WARN("Received empty image");
                 return;
             }
 
             // Process the frame
             processFrame(image);
-        }
-        catch (cv_bridge::Exception &e)
-        {
+        } catch (cv_bridge::Exception &e) {
             ROS_ERROR("cv_bridge exception: %s", e.what());
-        }
-        catch (const std::exception &e)
-        {
+        } catch (const std::exception &e) {
             ROS_ERROR("Processing exception: %s", e.what());
         }
     }
 
-private:
-    void processFrame(cv::Mat &image)
-    {
+   private:
+    void processFrame(cv::Mat &image) {
         auto now = std::chrono::steady_clock::now();
         auto start = std::chrono::system_clock::now();
-        double timeStart = this->getCurrentTimeInSeconds();
+        double timeStart = getCurrentTimeInSeconds();
 
         // Object detection
         std::vector<Detection> res;
@@ -155,15 +142,13 @@ private:
         bool currentTargetInLane = false;
         float currentTargetBottomY = -1;
 
-        // First, check if our current target still exists and update its bounding box
-        if (targetId_ != -1)
-        {
+        // First, check if our current target still exists and update its bounding
+        // box
+        if (targetId_ != -1) {
             auto it = std::find_if(outputStracks.begin(), outputStracks.end(),
-                                   [this](const STrack &obj)
-                                   { return obj.track_id == targetId_; });
+                                   [this](const STrack &obj) { return obj.track_id == targetId_; });
 
-            if (it != outputStracks.end())
-            {
+            if (it != outputStracks.end()) {
                 currentTargetStillExists = true;
                 const auto &tlbr = it->tlbr;
                 bestBox_ = cv::Rect(tlbr[0], tlbr[1], tlbr[2] - tlbr[0], tlbr[3] - tlbr[1]);
@@ -172,25 +157,21 @@ private:
         }
 
         // Log detected objects and find lane candidates
-        for (const STrack &obj : outputStracks)
-        {
+        for (const STrack &obj : outputStracks) {
             const auto &tlbr = obj.tlbr;
             float h = tlbr[3] - tlbr[1];
-            if (h > 400)
-                continue;
+            if (h > 400) continue;
 
             int classId = obj.classId;
             float conf = obj.score;
 
             // Detect speed limit signs
-            if (classId >= 12 && classId <= 17 && conf > 0.6f)
-            {
+            if (classId >= 12 && classId <= 17 && conf > 0.6f) {
                 maxSpeed_ = (classId - 9) * 10;
             }
 
             // Detect vehicles in lane
-            if ((classId == 2 || classId == 4 || classId == 5) && lanes.size() >= 2)
-            {
+            if ((classId == 2 || classId == 4 || classId == 5) && lanes.size() >= 2) {
                 cv::Point bottom_center((tlbr[0] + tlbr[2]) / 2.0f, tlbr[3]);
 
                 std::vector<cv::Point> lane_area = {{lanes[0][0], lanes[0][1]},
@@ -199,32 +180,28 @@ private:
                                                     {lanes[0][2], lanes[0][3]}};
 
                 // Check if vehicle is in lane
-                if (cv::pointPolygonTest(lane_area, bottom_center, false) >= 0)
-                {
+                if (cv::pointPolygonTest(lane_area, bottom_center, false) >= 0) {
                     cv::Point center((tlbr[0] + tlbr[2]) / 2.0f, (tlbr[1] + tlbr[3]) / 2.0f);
                     cv::circle(image, center, 5, cv::Scalar(0, 255, 0), -1);
 
                     // Check if this is our current target
-                    if (obj.track_id == targetId_)
-                    {
+                    if (obj.track_id == targetId_) {
                         currentTargetInLane = true;
-                        lostTargetCount_ = 0;                // Reset lost counter
-                        framesCurrentTargetOutsideLane_ = 0; // Reset outside lane counter
+                        lostTargetCount_ = 0;                 // Reset lost counter
+                        framesCurrentTargetOutsideLane_ = 0;  // Reset outside lane counter
                     }
                     // Consider new targets (even if we have a current target)
-                    else if (tlbr[3] > maxBottomY)
-                    {
+                    else if (tlbr[3] > maxBottomY) {
                         bestBoxTmp = cv::Rect(tlbr[0], tlbr[1], tlbr[2] - tlbr[0], h);
                         detectedTargetId = obj.track_id;
-                        maxBottomY = tlbr[3]; // update closest
+                        maxBottomY = tlbr[3];  // update closest
                     }
                 }
             }
         }
 
         // Update outside lane counter
-        if (targetId_ != -1 && !currentTargetInLane)
-        {
+        if (targetId_ != -1 && !currentTargetInLane) {
             framesCurrentTargetOutsideLane_++;
         }
 
@@ -232,62 +209,48 @@ private:
         bool shouldSwitchTarget = false;
         std::string switchReason = "";
 
-        if (targetId_ == -1)
-        {
+        if (targetId_ == -1) {
             // No current target - assign new one if found in lane
-            if (detectedTargetId != -1)
-            {
+            if (detectedTargetId != -1) {
                 shouldSwitchTarget = true;
                 switchReason = "No current target";
             }
-        }
-        else if (!currentTargetStillExists)
-        {
+        } else if (!currentTargetStillExists) {
             // Current target disappeared from tracking
             lostTargetCount_++;
-            if (lostTargetCount_ >= MAX_LOST_FRAMES)
-            {
-                if (detectedTargetId != -1)
-                {
+            if (lostTargetCount_ >= MAX_LOST_FRAMES) {
+                if (detectedTargetId != -1) {
                     shouldSwitchTarget = true;
                     switchReason = "Current target lost";
-                }
-                else
-                {
-                    targetId_ = -1; // No replacement available
+                } else {
+                    targetId_ = -1;  // No replacement available
                     lostTargetCount_ = 0;
                 }
             }
-        }
-        else if (detectedTargetId != -1 && detectedTargetId != targetId_)
-        {
+        } else if (detectedTargetId != -1 && detectedTargetId != targetId_) {
             // We have both current and new target candidates
             // Check switching criteria:
 
             // 1. Current target has been outside lane detection for too long
-            if (framesCurrentTargetOutsideLane_ >= FRAMES_OUTSIDE_LANE)
-            {
+            if (framesCurrentTargetOutsideLane_ >= FRAMES_OUTSIDE_LANE) {
                 shouldSwitchTarget = true;
                 switchReason = "Current target outside lane too long";
             }
             // 2. New target is significantly closer (more relevant for following)
             else if (currentTargetInLane &&
-                     (maxBottomY - currentTargetBottomY) > DISTANCE_THRESHOLD)
-            {
+                     (maxBottomY - currentTargetBottomY) > DISTANCE_THRESHOLD) {
                 shouldSwitchTarget = true;
                 switchReason = "New target significantly closer";
             }
             // 3. Current target not in lane but new target is
-            else if (!currentTargetInLane)
-            {
+            else if (!currentTargetInLane) {
                 shouldSwitchTarget = true;
                 switchReason = "New target in lane, current not";
             }
         }
 
         // Execute target switch if needed
-        if (shouldSwitchTarget && detectedTargetId != -1)
-        {
+        if (shouldSwitchTarget && detectedTargetId != -1) {
             targetId_ = detectedTargetId;
             bestBox_ = bestBoxTmp;
             lostTargetCount_ = 0;
@@ -315,29 +278,23 @@ private:
 
         // FPS calculation
         frameCount_++;
-        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - fpsStartTime_).count();
-        if (elapsed >= 1)
-        {
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::seconds>(now - fpsStartTime_).count();
+        if (elapsed >= 1) {
             fps_ = frameCount_ / static_cast<double>(elapsed);
             frameCount_ = 0;
             fpsStartTime_ = now;
         }
 
         // Speed limit control
-        if (maxSpeed_ != -1)
-        {
-            if (accSpeed_ < maxSpeed_ && accSpeed_ < accMaxSpeed_)
-            {
-                accSpeed_ += 1; // Increase speed by 1 km/h
+        if (maxSpeed_ != -1) {
+            if (accSpeed_ < maxSpeed_ && accSpeed_ < accMaxSpeed_) {
+                accSpeed_ += 1;  // Increase speed by 1 km/h
+            } else if (accSpeed_ > maxSpeed_ && accSpeed_ > 0) {
+                accSpeed_ -= 1;  // Decrease speed by 1 km/h
             }
-            else if (accSpeed_ > maxSpeed_ && accSpeed_ > 0)
-            {
-                accSpeed_ -= 1; // Decrease speed by 1 km/h
-            }
-        }
-        else
-        {
-            accSpeed_ = accMaxSpeed_; // Reset to max speed if no speed limit detected
+        } else {
+            accSpeed_ = accMaxSpeed_;  // Reset to max speed if no speed limit detected
         }
 
         // Display result (optional - you might want to publish instead)
@@ -345,28 +302,28 @@ private:
         cv::waitKey(1);
     }
 
-    double getCurrentTimeInSeconds()
-    {
-        return ros::Time::now().toSec();
-    }
+    double getCurrentTimeInSeconds() { return ros::Time::now().toSec(); }
 };
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     ros::init(argc, argv, "video_subscriber_test");
 
-    try
-    {
+    try {
         VideoSubscriber subscriber;
 
         ROS_INFO("Advanced video subscriber test running...");
         ROS_INFO("Subscribing to: /video/image");
         ROS_INFO("Features: Object detection, Lane detection, Speed control");
-
+        // Load configuration from JSON file
+        std::cout << "🔧 Loading configuration..." << std::endl;
+        Config::loadConfig("config.json");
+        CameraSettings cameraSettings = Config::config.camera;
+        std::cout << cameraSettings.focalLength << "focalLength" << cameraSettings.realObjectWidth
+                  << " @ " << cameraSettings.fps << " FPS\n";
+        std::cout << "✅ Configuration loaded successfully.\n";
+        STrack::initializeEstimator();
         ros::spin();
-    }
-    catch (const std::exception &e)
-    {
+    } catch (const std::exception &e) {
         ROS_ERROR("Exception in main: %s", e.what());
         return -1;
     }

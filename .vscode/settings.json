@@ -6,6 +6,7 @@
         "/opt/ros/melodic/lib/python2.7/dist-packages"
     ],
     "files.associations": {
+        "*.onnx": "binary",
         "chrono": "cpp",
         "cctype": "cpp",
         "clocale": "cpp",
@@ -97,6 +98,9 @@
         "scoped_allocator": "cpp",
         "syncstream": "cpp",
         "variant": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "expected": "cpp",
+        "spanstream": "cpp",
+        "stacktrace": "cpp"
     }
 }

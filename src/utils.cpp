@@ -1,3 +1,5 @@
+#include <config.h>
+
 #include <utils.hpp>
 bool IsPathExist(const string &path) { return (access(path.c_str(), F_OK) == 0); }
 
@@ -56,11 +58,11 @@ bool checkImages(const string &path, vector<string> &imagePathList) {
 }
 
 bool isTrackingClass(int classId) {
-    return true;
-    // for (auto &c : trackClasses) {
+    // for (auto &c : Config::config.objectTracking.trackClasses) {
+    //     if (c == classId) return true;
     //   if (classId == c) return true;
     // }
-    // return false;
+    return true;
 }
 
 double getCurrentTimeInSeconds() {
