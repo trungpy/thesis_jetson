@@ -27,8 +27,10 @@ Detect::Detect(string model_path, nvinfer1::ILogger &logger) {
         saveEngine(model_path);
     }
 
-    std::cout << "Input dimensions: " << inputHeight << "x" << inputWeight << std::endl;
-    std::cout << "TensorRT version: " << NV_TENSORRT_MAJOR << "." << NV_TENSORRT_MINOR << std::endl;
+    std::cout << "Input dimensions: " << inputHeight << "x" << inputWeight
+              << std::endl;
+    std::cout << "TensorRT version: " << NV_TENSORRT_MAJOR << "."
+              << NV_TENSORRT_MINOR << std::endl;
 }
 
 void Detect::init(std::string engine_path, nvinfer1::ILogger &logger) {
@@ -67,9 +69,10 @@ void Detect::init(std::string engine_path, nvinfer1::ILogger &logger) {
 
     // Initialize input buffers
     cpu_output_buffer = new float[detection_attribute_size * num_detections];
-    CUDA_CHECK(cudaMalloc(&gpu_buffers[0], 3 * inputWeight * inputHeight * sizeof(float)));
-    CUDA_CHECK(
-        cudaMalloc(&gpu_buffers[1], detection_attribute_size * num_detections * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&gpu_buffers[0],
+                          3 * inputWeight * inputHeight * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&gpu_buffers[1], detection_attribute_size *
+                                               num_detections * sizeof(float)));
 
     cuda_preprocess_init(MAX_IMAGE_SIZE);
     CUDA_CHECK(cudaStreamCreate(&stream));
@@ -86,7 +89,8 @@ Detect::~Detect() {
     // Release stream and buffers
     CUDA_CHECK(cudaStreamSynchronize(stream));
     CUDA_CHECK(cudaStreamDestroy(stream));
-    for (int i = 0; i < 2; i++) CUDA_CHECK(cudaFree(gpu_buffers[i]));
+    for (int i = 0; i < 2; i++)
+        CUDA_CHECK(cudaFree(gpu_buffers[i]));
     delete[] cpu_output_buffer;
 
     // Destroy the engine
@@ -104,8 +108,8 @@ Detect::~Detect() {
 
 void Detect::preprocess(Mat &image) {
     // Preprocessing data on gpu
-    cuda_preprocess(image.ptr(), image.cols, image.rows, gpu_buffers[0], inputWeight, inputHeight,
-                    stream);
+    cuda_preprocess(image.ptr(), image.cols, image.rows, gpu_buffers[0],
+                    inputWeight, inputHeight, stream);
     CUDA_CHECK(cudaStreamSynchronize(stream));
 }
 
@@ -132,7 +136,8 @@ void Detect::infer() {
 void Detect::postprocess(Mat &image, vector<Detection> &output) {
     // Memcpy from device output buffer to host output buffer
     CUDA_CHECK(cudaMemcpyAsync(cpu_output_buffer, gpu_buffers[1],
-                               num_detections * detection_attribute_size * sizeof(float),
+                               num_detections * detection_attribute_size *
+                                   sizeof(float),
                                cudaMemcpyDeviceToHost, stream));
     CUDA_CHECK(cudaStreamSynchronize(stream));
 
@@ -140,10 +145,12 @@ void Detect::postprocess(Mat &image, vector<Detection> &output) {
     vector<int> classIds;
     vector<float> confidences;
 
-    const Mat det_output(detection_attribute_size, num_detections, CV_32F, cpu_output_buffer);
+    const Mat det_output(detection_attribute_size, num_detections, CV_32F,
+                         cpu_output_buffer);
 
     for (int i = 0; i < det_output.cols; ++i) {
-        const Mat classes_scores = det_output.col(i).rowRange(4, 4 + num_classes);
+        const Mat classes_scores =
+            det_output.col(i).rowRange(4, 4 + num_classes);
         Point class_id_point;
         double score;
         minMaxLoc(classes_scores, nullptr, &score, nullptr, &class_id_point);
@@ -174,16 +181,16 @@ void Detect::postprocess(Mat &image, vector<Detection> &output) {
         int idx = nms_result[i];
         result.classId = classIds[idx];
         result.conf = confidences[idx];
-        result.bbox =
-            scaleBoxToOriginal(boxes[idx], cv::Size(inputWeight, inputHeight), image.size());
+        result.bbox = scaleBoxToOriginal(
+            boxes[idx], cv::Size(inputWeight, inputHeight), image.size());
         output.push_back(result);
     }
 }
 
 void Detect::build(std::string onnxPath, nvinfer1::ILogger &logger) {
     auto builder = createInferBuilder(logger);
-    const auto explicitBatch =
-        1U << 0;  // kEXPLICIT_BATCH is 0, use 0 directly to avoid deprecation warning
+    const auto explicitBatch = 1U << 0; // kEXPLICIT_BATCH is 0, use 0 directly
+                                        // to avoid deprecation warning
     INetworkDefinition *network = builder->createNetworkV2(explicitBatch);
     IBuilderConfig *config = builder->createBuilderConfig();
 
@@ -191,9 +198,10 @@ void Detect::build(std::string onnxPath, nvinfer1::ILogger &logger) {
         config->setFlag(BuilderFlag::kFP16);
     }
 
-    nvonnxparser::IParser *parser = nvonnxparser::createParser(*network, logger);
-    bool parsed = parser->parseFromFile(onnxPath.c_str(),
-                                        static_cast<int>(nvinfer1::ILogger::Severity::kINFO));
+    nvonnxparser::IParser *parser =
+        nvonnxparser::createParser(*network, logger);
+    bool parsed = parser->parseFromFile(
+        onnxPath.c_str(), static_cast<int>(nvinfer1::ILogger::Severity::kINFO));
 #if NV_TENSORRT_MAJOR < 8
     ICudaEngine *tmp_engine = builder->buildCudaEngine(*network);
     IHostMemory *plan = nullptr;
@@ -240,7 +248,8 @@ bool Detect::saveEngine(const std::string &onnxPath) {
         std::ofstream file;
         file.open(engine_path, std::ios::binary | std::ios::out);
         if (!file.is_open()) {
-            std::cout << "Create engine file" << engine_path << " failed" << std::endl;
+            std::cout << "Create engine file" << engine_path << " failed"
+                      << std::endl;
             return 0;
         }
         file.write((const char *)data->data(), data->size());
@@ -275,45 +284,54 @@ void Detect::draw(cv::Mat &image, const std::vector<STrack> &output) {
         // Estimate and draw distance if class is relevant
         if (classId == 2 || classId == 4 || classId == 5) {
             std::ostringstream ss;
-            ss << std::fixed << std::setprecision(2) << detection.estimatedDistance << "m";
+            ss << std::fixed << std::setprecision(2)
+               << detection.estimatedDistance << "m";
 
             // Smaller font for distance text
-            cv::putText(image, ss.str(), cv::Point(box.x + 2, box.y - 20), cv::FONT_HERSHEY_SIMPLEX,
-                        0.4, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+            cv::putText(image, ss.str(), cv::Point(box.x + 2, box.y - 20),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.4,
+                        cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
         }
 
         // Prepare and draw label with smaller font
         std::ostringstream label_ss;
-        label_ss << config.objectTracking.classNames[classId] << "." << std::fixed
-                 << std::setprecision(2) << detection.score;
+        label_ss << config.objectTracking.classNames[classId] << "."
+                 << std::fixed << std::setprecision(2) << detection.score;
 
         std::string label = label_ss.str();
 
         // Smaller font for main label
-        cv::putText(image, label, cv::Point(box.x + 2, box.y - 5), cv::FONT_HERSHEY_SIMPLEX, 0.4,
-                    cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
+        cv::putText(image, label, cv::Point(box.x + 2, box.y - 5),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 255), 1,
+                    cv::LINE_AA);
 
         cv::putText(image, cv::format("%d", detection.track_id),
-                    cv::Point(box.x + 2, box.y + box.height - 5), cv::FONT_HERSHEY_SIMPLEX, 0.4,
-                    cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+                    cv::Point(box.x + 2, box.y + box.height - 5),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 255, 255), 1,
+                    cv::LINE_AA);
     }
 }
 
-cv::Rect Detect::scaleBoxToOriginal(const cv::Rect &input_box, const cv::Size &model_input_size,
+cv::Rect Detect::scaleBoxToOriginal(const cv::Rect &input_box,
+                                    const cv::Size &model_input_size,
                                     const cv::Size &original_size) {
-    float ratio_h = static_cast<float>(model_input_size.height) / original_size.height;
-    float ratio_w = static_cast<float>(model_input_size.width) / original_size.width;
+    float ratio_h =
+        static_cast<float>(model_input_size.height) / original_size.height;
+    float ratio_w =
+        static_cast<float>(model_input_size.width) / original_size.width;
 
     cv::Rect box = input_box;
 
     if (ratio_h > ratio_w) {
-        float pad = (model_input_size.height - ratio_w * original_size.height) / 2;
+        float pad =
+            (model_input_size.height - ratio_w * original_size.height) / 2;
         box.x = box.x / ratio_w;
         box.y = (box.y - pad) / ratio_w;
         box.width = static_cast<int>(box.width / ratio_w);
         box.height = static_cast<int>(box.height / ratio_w);
     } else {
-        float pad = (model_input_size.width - ratio_h * original_size.width) / 2;
+        float pad =
+            (model_input_size.width - ratio_h * original_size.width) / 2;
         box.x = (box.x - pad) / ratio_h;
         box.y = box.y / ratio_h;
         box.width = static_cast<int>(box.width / ratio_h);

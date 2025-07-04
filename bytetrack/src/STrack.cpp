@@ -60,7 +60,8 @@ void STrack::re_activate(STrack &new_track, int frame_id, bool new_id) {
     xyah_box[1] = xyah[1];
     xyah_box[2] = xyah[2];
     xyah_box[3] = xyah[3];
-    auto mc = this->kalman_filter.update(this->mean, this->covariance, xyah_box);
+    auto mc =
+        this->kalman_filter.update(this->mean, this->covariance, xyah_box);
     this->mean = mc.first;
     this->covariance = mc.second;
     this->classId = new_track.classId;
@@ -73,7 +74,8 @@ void STrack::re_activate(STrack &new_track, int frame_id, bool new_id) {
     this->is_activated = true;
     this->frame_id = frame_id;
     this->score = new_track.score;
-    if (new_id) this->track_id = next_id();
+    if (new_id)
+        this->track_id = next_id();
 }
 
 void STrack::update(STrack &new_track, int frame_id) {
@@ -92,10 +94,11 @@ void STrack::update(STrack &new_track, int frame_id) {
     if (this->classId == 2 || this->classId == 4 || this->classId == 5) {
         this->estimatedDistance = estimator.estimate(this->tlwh[3]);
     } else {
-        this->estimatedDistance = -1.0f;  // not relevant
+        this->estimatedDistance = -1.0f; // not relevant
     }
 
-    auto mc = this->kalman_filter.update(this->mean, this->covariance, xyah_box);
+    auto mc =
+        this->kalman_filter.update(this->mean, this->covariance, xyah_box);
     this->mean = mc.first;
     this->covariance = mc.second;
 
@@ -162,7 +165,8 @@ int STrack::next_id() {
 
 int STrack::end_frame() { return this->frame_id; }
 
-void STrack::multi_predict(vector<STrack *> &stracks, byte_kalman::KalmanFilter &kalman_filter) {
+void STrack::multi_predict(vector<STrack *> &stracks,
+                           byte_kalman::KalmanFilter &kalman_filter) {
     for (int i = 0; i < stracks.size(); i++) {
         if (stracks[i]->state != TrackState::Tracked) {
             stracks[i]->mean[7] = 0;

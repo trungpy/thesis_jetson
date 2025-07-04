@@ -6,8 +6,8 @@
 
 /** Column-reduction and reduction transfer for a dense cost matrix.
  */
-int_t _ccrrt_dense(const uint_t n, cost_t *cost[], int_t *free_rows, int_t *x, int_t *y,
-                   cost_t *v) {
+int_t _ccrrt_dense(const uint_t n, cost_t *cost[], int_t *free_rows, int_t *x,
+                   int_t *y, cost_t *v) {
     int_t n_free_rows;
     boolean *unique;
 
@@ -23,7 +23,8 @@ int_t _ccrrt_dense(const uint_t n, cost_t *cost[], int_t *free_rows, int_t *x, i
                 v[j] = c;
                 y[j] = i;
             }
-            PRINTF("i=%d, j=%d, c[i,j]=%f, v[j]=%f y[j]=%d\n", i, j, c, v[j], y[j]);
+            PRINTF("i=%d, j=%d, c[i,j]=%f, v[j]=%f y[j]=%d\n", i, j, c, v[j],
+                   y[j]);
         }
     }
     PRINT_COST_ARRAY(v, n);
@@ -69,8 +70,8 @@ int_t _ccrrt_dense(const uint_t n, cost_t *cost[], int_t *free_rows, int_t *x, i
 
 /** Augmenting row reduction for a dense cost matrix.
  */
-int_t _carr_dense(const uint_t n, cost_t *cost[], const uint_t n_free_rows, int_t *free_rows,
-                  int_t *x, int_t *y, cost_t *v) {
+int_t _carr_dense(const uint_t n, cost_t *cost[], const uint_t n_free_rows,
+                  int_t *free_rows, int_t *x, int_t *y, cost_t *v) {
     uint_t current = 0;
     int_t new_free_rows = 0;
     uint_t rr_cnt = 0;
@@ -109,8 +110,8 @@ int_t _carr_dense(const uint_t n, cost_t *cost[], const uint_t n_free_rows, int_
         i0 = y[j1];
         v1_new = v[j1] - (v2 - v1);
         v1_lowers = v1_new < v[j1];
-        PRINTF("%d %d 1=%d,%f 2=%d,%f v1'=%f(%d,%g) \n", free_i, i0, j1, v1, j2, v2, v1_new,
-               v1_lowers, v[j1] - v1_new);
+        PRINTF("%d %d 1=%d,%f 2=%d,%f v1'=%f(%d,%g) \n", free_i, i0, j1, v1, j2,
+               v2, v1_new, v1_lowers, v[j1] - v1_new);
         if (rr_cnt < current * n) {
             if (v1_lowers) {
                 v[j1] = v1_new;
@@ -126,7 +127,8 @@ int_t _carr_dense(const uint_t n, cost_t *cost[], const uint_t n_free_rows, int_
                 }
             }
         } else {
-            PRINTF("rr_cnt=%d >= %d (current=%d * n=%d)\n", rr_cnt, current * n, current, n);
+            PRINTF("rr_cnt=%d >= %d (current=%d * n=%d)\n", rr_cnt, current * n,
+                   current, n);
             if (i0 >= 0) {
                 free_rows[new_free_rows++] = i0;
             }
@@ -139,7 +141,8 @@ int_t _carr_dense(const uint_t n, cost_t *cost[], const uint_t n_free_rows, int_
 
 /** Find columns with minimum d[j] and put them on the SCAN list.
  */
-uint_t _find_dense(const uint_t n, uint_t lo, cost_t *d, int_t *cols, int_t *y) {
+uint_t _find_dense(const uint_t n, uint_t lo, cost_t *d, int_t *cols,
+                   int_t *y) {
     uint_t hi = lo + 1;
     cost_t mind = d[cols[lo]];
     for (uint_t k = hi; k < n; k++) {
@@ -158,8 +161,8 @@ uint_t _find_dense(const uint_t n, uint_t lo, cost_t *d, int_t *cols, int_t *y) 
 
 // Scan all columns in TODO starting from arbitrary column in SCAN
 // and try to decrease d of the TODO columns using the SCAN column.
-int_t _scan_dense(const uint_t n, cost_t *cost[], uint_t *plo, uint_t *phi, cost_t *d, int_t *cols,
-                  int_t *pred, int_t *y, cost_t *v) {
+int_t _scan_dense(const uint_t n, cost_t *cost[], uint_t *plo, uint_t *phi,
+                  cost_t *d, int_t *cols, int_t *pred, int_t *y, cost_t *v) {
     uint_t lo = *plo;
     uint_t hi = *phi;
     cost_t h, cred_ij;
@@ -192,14 +195,15 @@ int_t _scan_dense(const uint_t n, cost_t *cost[], uint_t *plo, uint_t *phi, cost
     return -1;
 }
 
-/** Single iteration of modified Dijkstra shortest path algorithm as explained in the JV paper.
+/** Single iteration of modified Dijkstra shortest path algorithm as explained
+ * in the JV paper.
  *
  * This is a dense matrix version.
  *
  * \return The closest free column index.
  */
-int_t find_path_dense(const uint_t n, cost_t *cost[], const int_t start_i, int_t *y, cost_t *v,
-                      int_t *pred) {
+int_t find_path_dense(const uint_t n, cost_t *cost[], const int_t start_i,
+                      int_t *y, cost_t *v, int_t *pred) {
     uint_t lo = 0, hi = 0;
     int_t final_j = -1;
     uint_t n_ready = 0;
@@ -257,13 +261,14 @@ int_t find_path_dense(const uint_t n, cost_t *cost[], const int_t start_i, int_t
 
 /** Augment for a dense cost matrix.
  */
-int_t _ca_dense(const uint_t n, cost_t *cost[], const uint_t n_free_rows, int_t *free_rows,
-                int_t *x, int_t *y, cost_t *v) {
+int_t _ca_dense(const uint_t n, cost_t *cost[], const uint_t n_free_rows,
+                int_t *free_rows, int_t *x, int_t *y, cost_t *v) {
     int_t *pred;
 
     NEW(pred, int_t, n);
 
-    for (int_t *pfree_i = free_rows; pfree_i < free_rows + n_free_rows; pfree_i++) {
+    for (int_t *pfree_i = free_rows; pfree_i < free_rows + n_free_rows;
+         pfree_i++) {
         int_t i = -1, j;
         uint_t k = 0;
 

@@ -26,9 +26,10 @@ int runImages(const vector<string> imagePathList, Detect &model) {
         std::vector<Object> objects = filterDetections(res);
         std::vector<STrack> outputStracks = tracker.update(objects);
         model.draw(image, outputStracks);
-        auto tc =
-            (double)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() /
-            1000.;
+        auto tc = (double)std::chrono::duration_cast<std::chrono::microseconds>(
+                      end - start)
+                      .count() /
+                  1000.;
         printf("cost %2.4lf ms\n", tc);
 
         imshow("Result", image);
@@ -42,10 +43,9 @@ int runImages(const vector<string> imagePathList, Detect &model) {
 
 
         cv::VideoCapture('nvarguscamerasrc !
-        video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1 ! nvvidconv !
-        video/x-raw,format=BGRx ! videoconvert ! appsink', cv::CAP_GSTREAMER);
-        std::string capture_pipeline =
-            "nvarguscamerasrc ! "
+        video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1 !
+ nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! appsink',
+ cv::CAP_GSTREAMER); std::string capture_pipeline = "nvarguscamerasrc ! "
             "video/x-raw(memory:NVMM), width=" + std::to_string(width) +
             ", height=" + std::to_string(height) +
             ", format=NV12, framerate=" + std::to_string(fps) + "/1 ! "
@@ -71,9 +71,9 @@ int runVideo(const std::string &path, Detect &model) {
     BYTETracker tracker(fps, 30);
     int frameCount = 0;
     auto fpsStartTime = std::chrono::steady_clock::now();
-    int maxSpeed = -1;  // km/h
+    int maxSpeed = -1; // km/h
 
-    int accSpeed = 60;  // km/h
+    int accSpeed = 60; // km/h
     LaneDetector laneDetector;
     // Speed control logic
     std::string action = "FREE DRIVE";
@@ -134,20 +134,25 @@ int runVideo(const std::string &path, Detect &model) {
         float currentTargetBottomY = -1;
 
         // Switching criteria thresholds
-        const float DISTANCE_THRESHOLD = 50.0f;  // pixels - how much closer new target must be
-        const int FRAMES_OUTSIDE_LANE = 10;      // frames current target has been outside lane
+        const float DISTANCE_THRESHOLD =
+            50.0f; // pixels - how much closer new target must be
+        const int FRAMES_OUTSIDE_LANE =
+            10; // frames current target has been outside lane
         static int framesCurrentTargetOutsideLane = 0;
 
-        // First, check if our current target still exists and update its bounding box
+        // First, check if our current target still exists and update its
+        // bounding box
         if (targetId != -1) {
-            auto it =
-                std::find_if(outputStracks.begin(), outputStracks.end(),
-                             [targetId](const STrack &obj) { return obj.track_id == targetId; });
+            auto it = std::find_if(outputStracks.begin(), outputStracks.end(),
+                                   [targetId](const STrack &obj) {
+                                       return obj.track_id == targetId;
+                                   });
 
             if (it != outputStracks.end()) {
                 currentTargetStillExists = true;
                 const auto &tlbr = it->tlbr;
-                bestBox = cv::Rect(tlbr[0], tlbr[1], tlbr[2] - tlbr[0], tlbr[3] - tlbr[1]);
+                bestBox = cv::Rect(tlbr[0], tlbr[1], tlbr[2] - tlbr[0],
+                                   tlbr[3] - tlbr[1]);
                 currentTargetBottomY = tlbr[3];
             }
         }
@@ -156,7 +161,8 @@ int runVideo(const std::string &path, Detect &model) {
         for (const STrack &obj : outputStracks) {
             const auto &tlbr = obj.tlbr;
             float h = tlbr[3] - tlbr[1];
-            if (h > 400) continue;
+            if (h > 400)
+                continue;
 
             int classId = obj.classId;
             float conf = obj.score;
@@ -167,7 +173,8 @@ int runVideo(const std::string &path, Detect &model) {
             }
 
             // Detect vehicles in lane
-            if ((classId == 2 || classId == 4 || classId == 5) && lanes.size() >= 2) {
+            if ((classId == 2 || classId == 4 || classId == 5) &&
+                lanes.size() >= 2) {
                 cv::Point bottom_center((tlbr[0] + tlbr[2]) / 2.0f, tlbr[3]);
 
                 std::vector<cv::Point> lane_area = {{lanes[0][0], lanes[0][1]},
@@ -176,21 +183,25 @@ int runVideo(const std::string &path, Detect &model) {
                                                     {lanes[0][2], lanes[0][3]}};
 
                 // Check if vehicle is in lane
-                if (cv::pointPolygonTest(lane_area, bottom_center, false) >= 0) {
-                    cv::Point center((tlbr[0] + tlbr[2]) / 2.0f, (tlbr[1] + tlbr[3]) / 2.0f);
+                if (cv::pointPolygonTest(lane_area, bottom_center, false) >=
+                    0) {
+                    cv::Point center((tlbr[0] + tlbr[2]) / 2.0f,
+                                     (tlbr[1] + tlbr[3]) / 2.0f);
                     cv::circle(image, center, 5, cv::Scalar(0, 255, 0), -1);
 
                     // Check if this is our current target
                     if (obj.track_id == targetId) {
                         currentTargetInLane = true;
-                        lostTargetCount = 0;                 // Reset lost counter
-                        framesCurrentTargetOutsideLane = 0;  // Reset outside lane counter
+                        lostTargetCount = 0; // Reset lost counter
+                        framesCurrentTargetOutsideLane =
+                            0; // Reset outside lane counter
                     }
                     // Consider new targets (even if we have a current target)
                     else if (tlbr[3] > maxBottomY) {
-                        bestBoxTmp = cv::Rect(tlbr[0], tlbr[1], tlbr[2] - tlbr[0], h);
+                        bestBoxTmp =
+                            cv::Rect(tlbr[0], tlbr[1], tlbr[2] - tlbr[0], h);
                         detectedTargetId = obj.track_id;
-                        maxBottomY = tlbr[3];  // update closest
+                        maxBottomY = tlbr[3]; // update closest
                     }
                 }
             }
@@ -219,7 +230,7 @@ int runVideo(const std::string &path, Detect &model) {
                     shouldSwitchTarget = true;
                     switchReason = "Current target lost";
                 } else {
-                    targetId = -1;  // No replacement available
+                    targetId = -1; // No replacement available
                     lostTargetCount = 0;
                 }
             }
@@ -232,7 +243,8 @@ int runVideo(const std::string &path, Detect &model) {
                 shouldSwitchTarget = true;
                 switchReason = "Current target outside lane too long";
             }
-            // 2. New target is significantly closer (more relevant for following)
+            // 2. New target is significantly closer (more relevant for
+            // following)
             else if (currentTargetInLane &&
                      (maxBottomY - currentTargetBottomY) > DISTANCE_THRESHOLD) {
                 shouldSwitchTarget = true;
@@ -253,27 +265,30 @@ int runVideo(const std::string &path, Detect &model) {
             framesCurrentTargetOutsideLane = 0;
 
             // Debug output
-            std::cout << "Target switched to ID " << targetId << " - Reason: " << switchReason
-                      << std::endl;
+            std::cout << "Target switched to ID " << targetId
+                      << " - Reason: " << switchReason << std::endl;
         }
 
         float avgDistance = 0.0f;
         float frontAbsoluteSpeed = 0.0f;
-        EgoVehicle::updateSpeedControl(timeStart, targetId, bestBox, currentEgoSpeed,
-                                       lastSpeedUpdateTime, objectBuffers, prevDistances, prevTimes,
-                                       smoothedSpeeds, speedChangeHistory, avgDistance,
-                                       frontAbsoluteSpeed, action, actionColor);
+        EgoVehicle::updateSpeedControl(
+            timeStart, targetId, bestBox, currentEgoSpeed, lastSpeedUpdateTime,
+            objectBuffers, prevDistances, prevTimes, smoothedSpeeds,
+            speedChangeHistory, avgDistance, frontAbsoluteSpeed, action,
+            actionColor);
 
         // Always display information on frame
-        drawHUD(image, currentEgoSpeed, accSpeed, maxSpeed, frontAbsoluteSpeed, avgDistance, action,
-                actionColor, fps, targetId);
+        drawHUD(image, currentEgoSpeed, accSpeed, maxSpeed, frontAbsoluteSpeed,
+                avgDistance, action, actionColor, fps, targetId);
 
         laneDetector.drawLanes(image, lanes);
 
         // fps calculation
         frameCount++;
 
-        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - fpsStartTime).count();
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::seconds>(now - fpsStartTime)
+                .count();
         if (elapsed >= 1) {
             fps = frameCount / static_cast<double>(elapsed);
             frameCount = 0;
@@ -281,18 +296,20 @@ int runVideo(const std::string &path, Detect &model) {
         }
 
         if (maxSpeed != -1) {
-            if (accSpeed < maxSpeed && accSpeed < config.speedControl.cruiseSpeedKph) {
-                accSpeed += 1;  // Increase speed by 1 km/h
+            if (accSpeed < maxSpeed &&
+                accSpeed < config.speedControl.cruiseSpeedKph) {
+                accSpeed += 1; // Increase speed by 1 km/h
             } else if (accSpeed > maxSpeed && accSpeed > 0) {
-                accSpeed -= 1;  // Decrease speed by 1 km/h
+                accSpeed -= 1; // Decrease speed by 1 km/h
             }
         } else {
-            accSpeed = config.speedControl
-                           .cruiseSpeedKph;  // Reset to max speed if no speed limit detected
+            accSpeed =
+                config.speedControl.cruiseSpeedKph; // Reset to max speed if no
+                                                    // speed limit detected
         }
 
         cv::imshow("Result", image);
-        if (cv::waitKey(1) == 'q') {  // Press 'q' to exit
+        if (cv::waitKey(1) == 'q') { // Press 'q' to exit
             break;
         }
     }
@@ -302,62 +319,69 @@ int runVideo(const std::string &path, Detect &model) {
     cv::destroyAllWindows();
     return 0;
 }
-void drawHUD(cv::Mat &image, float currentEgoSpeed, int accSpeed, int maxSpeed, float frontSpeed,
-             float avgDistance, const std::string &action, const cv::Scalar &actionColor,
-             double fps, int targetId) {
+void drawHUD(cv::Mat &image, float currentEgoSpeed, int accSpeed, int maxSpeed,
+             float frontSpeed, float avgDistance, const std::string &action,
+             const cv::Scalar &actionColor, double fps, int targetId) {
     // 1. FPS
-    cv::putText(image, cv::format("FPS: %.1f", fps), {10, 30}, cv::FONT_HERSHEY_SIMPLEX, 0.7, white,
-                2);
+    cv::putText(image, cv::format("FPS: %.1f", fps), {10, 30},
+                cv::FONT_HERSHEY_SIMPLEX, 0.7, white, 2);
 
     // 2. Speed Limit
     if (maxSpeed != -1) {
-        cv::putText(image, "Max Speed: " + std::to_string(maxSpeed) + " Km/h", {10, 60},
-                    cv::FONT_HERSHEY_SIMPLEX, 0.7, red, 2);
+        cv::putText(image, "Max Speed: " + std::to_string(maxSpeed) + " Km/h",
+                    {10, 60}, cv::FONT_HERSHEY_SIMPLEX, 0.7, red, 2);
     } else {
-        cv::putText(image, "No Speed Limit Detected", {10, 60}, cv::FONT_HERSHEY_SIMPLEX, 0.7, red,
-                    2);
+        cv::putText(image, "No Speed Limit Detected", {10, 60},
+                    cv::FONT_HERSHEY_SIMPLEX, 0.7, red, 2);
     }
 
     // 3. Cruise Control
     cv::putText(image,
-                "Cruise Control: " + std::to_string(config.speedControl.cruiseSpeedKph) + " Km/h",
+                "Cruise Control: " +
+                    std::to_string(config.speedControl.cruiseSpeedKph) +
+                    " Km/h",
                 {10, 90}, cv::FONT_HERSHEY_SIMPLEX, 0.7, yellow, 2);
 
     // 4. Front Vehicle Speed & Distance
     if (targetId != -1 && avgDistance > 0) {
-        cv::putText(image, "Front Speed: " + std::to_string((int)frontSpeed) + " Km/h", {10, 120},
-                    cv::FONT_HERSHEY_SIMPLEX, 0.8, orange, 2);
+        cv::putText(image,
+                    "Front Speed: " + std::to_string((int)frontSpeed) + " Km/h",
+                    {10, 120}, cv::FONT_HERSHEY_SIMPLEX, 0.8, orange, 2);
 
         // Distance color zones
-        cv::Scalar zoneColor = (avgDistance < config.speedControl.criticalDistance)
-                                   ? cv::Scalar(0, 0, 255)  // Red
-                               : (avgDistance < config.speedControl.minFollowingDistance)
-                                   ? cv::Scalar(0, 128, 255)  // Orange
-                               : (avgDistance < config.speedControl.targetFollowingDistance)
-                                   ? cv::Scalar(0, 255, 255)  // Yellow
-                                   : cv::Scalar(0, 255, 0);   // Green
+        cv::Scalar zoneColor =
+            (avgDistance < config.speedControl.criticalDistance)
+                ? cv::Scalar(0, 0, 255) // Red
+            : (avgDistance < config.speedControl.minFollowingDistance)
+                ? cv::Scalar(0, 128, 255) // Orange
+            : (avgDistance < config.speedControl.targetFollowingDistance)
+                ? cv::Scalar(0, 255, 255) // Yellow
+                : cv::Scalar(0, 255, 0);  // Green
 
         cv::circle(image, {image.cols - 100, 100}, 30, zoneColor, -1);
-        cv::putText(image, std::to_string((int)avgDistance) + "m", {image.cols - 120, 110},
-                    cv::FONT_HERSHEY_SIMPLEX, 0.5, white, 1);
+        cv::putText(image, std::to_string((int)avgDistance) + "m",
+                    {image.cols - 120, 110}, cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                    white, 1);
     } else {
-        cv::putText(image, "Front Speed: -- km/h", {10, 120}, cv::FONT_HERSHEY_SIMPLEX, 0.8, gray,
-                    2);
+        cv::putText(image, "Front Speed: -- km/h", {10, 120},
+                    cv::FONT_HERSHEY_SIMPLEX, 0.8, gray, 2);
     }
 
     // 5. Ego Vehicle Speed
-    cv::putText(image, "Ego Speed: " + std::to_string((int)currentEgoSpeed) + " Km/h", {10, 150},
-                cv::FONT_HERSHEY_SIMPLEX, 0.8, green, 2);
+    cv::putText(image,
+                "Ego Speed: " + std::to_string((int)currentEgoSpeed) + " Km/h",
+                {10, 150}, cv::FONT_HERSHEY_SIMPLEX, 0.8, green, 2);
 
     // 6. Driving Action
-    cv::putText(image, "Action: " + action, {10, 180}, cv::FONT_HERSHEY_SIMPLEX, 0.8, actionColor,
-                2);
+    cv::putText(image, "Action: " + action, {10, 180}, cv::FONT_HERSHEY_SIMPLEX,
+                0.8, actionColor, 2);
     // 7. Target ID
     if (targetId != -1) {
-        cv::putText(image, "Flow car id: " + std::to_string(targetId), {10, 210},
-                    cv::FONT_HERSHEY_SIMPLEX, 0.8, white, 2);
+        cv::putText(image, "Flow car id: " + std::to_string(targetId),
+                    {10, 210}, cv::FONT_HERSHEY_SIMPLEX, 0.8, white, 2);
     } else {
-        cv::putText(image, "No flow", {10, 210}, cv::FONT_HERSHEY_SIMPLEX, 0.8, gray, 2);
+        cv::putText(image, "No flow", {10, 210}, cv::FONT_HERSHEY_SIMPLEX, 0.8,
+                    gray, 2);
     }
 }
 
@@ -371,10 +395,11 @@ std::vector<Object> filterDetections(const std::vector<Detection> &res) {
     return objects;
 }
 
-void selectTarget(const std::vector<STrack> &tracks, float xMin, float xMax, int &targetId,
-                  cv::Rect &bestBox, float &maxHeight) {
+void selectTarget(const std::vector<STrack> &tracks, float xMin, float xMax,
+                  int &targetId, cv::Rect &bestBox, float &maxHeight) {
     for (const auto &track : tracks) {
-        if (!track.is_activated) continue;
+        if (!track.is_activated)
+            continue;
         auto &tlbr = track.tlbr;
         float x1 = tlbr[0], y1 = tlbr[1], x2 = tlbr[2], y2 = tlbr[3];
         float xCenter = (x1 + x2) / 2.0f;

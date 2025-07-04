@@ -12,12 +12,14 @@ using namespace std;
 enum TrackState { New = 0, Tracked, Lost, Removed };
 
 class STrack {
-   public:
-    STrack(vector<float> tlwh_, float score, int classId);  // Updated constructor
+public:
+    STrack(vector<float> tlwh_, float score,
+           int classId); // Updated constructor
     ~STrack();
 
     vector<float> static tlbr_to_tlwh(vector<float> &tlbr);
-    void static multi_predict(vector<STrack *> &stracks, byte_kalman::KalmanFilter &kalman_filter);
+    void static multi_predict(vector<STrack *> &stracks,
+                              byte_kalman::KalmanFilter &kalman_filter);
     void static_tlwh();
     void static_tlbr();
     vector<float> tlwh_to_xyah(vector<float> tlwh_tmp);
@@ -32,11 +34,12 @@ class STrack {
     void update(STrack &new_track, int frame_id);
     inline static FrontDistanceEstimator estimator{0, 0};
     static void initializeEstimator() {
-        estimator = FrontDistanceEstimator(Config::config.camera.focalLength,
-                                           Config::config.camera.realObjectWidth);
+        estimator =
+            FrontDistanceEstimator(Config::config.camera.focalLength,
+                                   Config::config.camera.realObjectWidth);
     }
 
-   public:
+public:
     bool is_activated;
     int track_id;
     int state;
@@ -51,9 +54,9 @@ class STrack {
     KAL_MEAN mean;
     KAL_COVA covariance;
     float score;
-    int classId;  // Added classId
+    int classId; // Added classId
     float estimatedDistance = -1.0f;
 
-   private:
+private:
     byte_kalman::KalmanFilter kalman_filter;
 };

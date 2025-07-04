@@ -6,7 +6,7 @@
 #include <opencv2/opencv.hpp>
 
 class VideoPublisher {
-   private:
+private:
     ros::NodeHandle nh_;
     image_transport::ImageTransport it_;
     image_transport::Publisher image_pub_;
@@ -16,7 +16,7 @@ class VideoPublisher {
     std::string video_path_;
     double fps_;
 
-   public:
+public:
     VideoPublisher() : it_(nh_) {
         // Get video path parameter (try both private and global)
         ros::NodeHandle private_nh("~");
@@ -29,7 +29,8 @@ class VideoPublisher {
         }
 
         if (video_path_.empty()) {
-            ROS_ERROR("No video path specified! Use: _video_path:=/path/to/video.mp4");
+            ROS_ERROR("No video path specified! Use: "
+                      "_video_path:=/path/to/video.mp4");
             ros::shutdown();
             return;
         }
@@ -45,10 +46,11 @@ class VideoPublisher {
 
         // Create publisher and timer
         image_pub_ = it_.advertise("video/image", 1);
-        timer_ = nh_.createTimer(ros::Duration(1.0 / fps_), &VideoPublisher::publishFrame, this);
+        timer_ = nh_.createTimer(ros::Duration(1.0 / fps_),
+                                 &VideoPublisher::publishFrame, this);
     }
 
-    void publishFrame(const ros::TimerEvent&) {
+    void publishFrame(const ros::TimerEvent &) {
         cv::Mat frame;
 
         if (!cap_.read(frame)) {
@@ -69,7 +71,7 @@ class VideoPublisher {
     }
 };
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     ros::init(argc, argv, "video_publisher");
 
     VideoPublisher publisher;

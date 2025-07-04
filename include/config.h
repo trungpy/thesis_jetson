@@ -1,13 +1,18 @@
-// config.h - Centralized configuration for camera, detection, and control parameters.
+// config.h - Centralized configuration for camera, detection, and control
+// parameters.
 //
-// - Camera & Frame Settings: Resolution, fps, and camera calibration (focal length, object width).
+// - Camera & Frame Settings: Resolution, fps, and camera calibration (focal
+// length, object width).
 // - ROI: X-axis bounds for focusing detection/tracking.
-// - Distance & Speed Estimation: Limits and smoothing for object speed/distance calculations.
-// - Adaptive Speed Control: Desired speeds, following distances, and emergency thresholds.
+// - Distance & Speed Estimation: Limits and smoothing for object speed/distance
+// calculations.
+// - Adaptive Speed Control: Desired speeds, following distances, and emergency
+// thresholds.
 // - Speed Adjustment: How quickly speed can change, and min/max allowed speeds.
 // - Object Tracking: Which classes to track, their names, and display colors.
 //
-// All values are defined as constexpr or const for compile-time safety and easy tuning.
+// All values are defined as constexpr or const for compile-time safety and easy
+// tuning.
 //
 // Usage: Include this header wherever these parameters are needed.
 
@@ -63,7 +68,7 @@ struct SpeedAdjustment {
 struct ObjectTracking {
     std::vector<int> trackClasses;
     std::vector<std::string> classNames;
-    std::vector<std::vector<unsigned int>> colors;  // RGB colors for each class
+    std::vector<std::vector<unsigned int>> colors; // RGB colors for each class
 };
 
 struct DetectConfig {
@@ -76,7 +81,7 @@ struct DetectConfig {
 
 // Main configuration structure
 struct Configuration {
-    DetectConfig detectConfig;  // Detection configuration
+    DetectConfig detectConfig; // Detection configuration
     CameraSettings camera;
     ROI roi;
     DistanceSpeedEstimation distanceSpeed;
@@ -97,8 +102,8 @@ extern const cv::Scalar green;
 extern const cv::Scalar gray;
 
 // Initialization function
-void loadConfig(const std::string& configPath);
+void loadConfig(const std::string &configPath);
 
-}  // namespace Config
+} // namespace Config
 
-#endif  // CONFIG_H
+#endif // CONFIG_H

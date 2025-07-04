@@ -7,17 +7,18 @@
  * @brief Setting up Tensorrt logger
  */
 class Logger : public nvinfer1::ILogger {
-   public:
+public:
     static Logger &getInstance() {
         static Logger instance;
         return instance;
     }
 
     void log(Severity severity, const char *msg) noexcept override {
-        if (severity <= Severity::kWARNING) std::cout << msg << std::endl;
+        if (severity <= Severity::kWARNING)
+            std::cout << msg << std::endl;
     }
 
-   private:
+private:
     Logger() = default;
     ~Logger() = default;
     Logger(const Logger &) = delete;
@@ -26,15 +27,18 @@ class Logger : public nvinfer1::ILogger {
 
 // Create CLI option parser
 cxxopts::Options createOptions() {
-    cxxopts::Options options("test", "Run inference on a video or images (choose only one)");
-    options.add_options()("v,video", "Video path", cxxopts::value<std::string>())(
+    cxxopts::Options options(
+        "test", "Run inference on a video or images (choose only one)");
+    options.add_options()("v,video", "Video path",
+                          cxxopts::value<std::string>())(
         "i,images", "Images path", cxxopts::value<std::string>())(
-        "m,engine", "Engine path", cxxopts::value<std::string>())("h,help", "Print usage");
+        "m,engine", "Engine path",
+        cxxopts::value<std::string>())("h,help", "Print usage");
     return options;
 }
 
 class App {
-   public:
+public:
     int runApp(int argc, char **argv) {
         auto options = createOptions();
         AppConfig config = parseArgs(argc, argv, options);
@@ -44,11 +48,13 @@ class App {
             return 0;
         }
 
-        std::cout << "🔧 Loading engine from: " << config.enginePath << std::endl;
+        std::cout << "🔧 Loading engine from: " << config.enginePath
+                  << std::endl;
         Detect model(config.enginePath, Logger::getInstance());
 
         if (!config.videoPath.empty()) {
-            std::cout << "🎞️ Running video inference on: " << config.videoPath << std::endl;
+            std::cout << "🎞️ Running video inference on: "
+                      << config.videoPath << std::endl;
             if (checkVideo(config.videoPath))
                 return runVideo(config.videoPath, model);
             else {
@@ -59,12 +65,13 @@ class App {
 
         if (!config.imagePath.empty()) {
             std::vector<std::string> imageList;
-            std::cout << "🖼️ Running image inference in folder: " << config.imagePath
-                      << std::endl;
+            std::cout << "🖼️ Running image inference in folder: "
+                      << config.imagePath << std::endl;
             if (checkImages(config.imagePath, imageList))
                 return runImages(imageList, model);
             else {
-                std::cerr << "❌ No valid images found in: " << config.imagePath << std::endl;
+                std::cerr << "❌ No valid images found in: " << config.imagePath
+                          << std::endl;
                 return 1;
             }
         }
@@ -72,7 +79,7 @@ class App {
         return 0;
     }
 
-   private:
+private:
     struct AppConfig {
         std::string videoPath;
         std::string imagePath;
@@ -95,11 +102,14 @@ class App {
             exit(1);
         }
 
-        if (result.count("video")) config.videoPath = result["video"].as<std::string>();
-        if (result.count("images")) config.imagePath = result["images"].as<std::string>();
+        if (result.count("video"))
+            config.videoPath = result["video"].as<std::string>();
+        if (result.count("images"))
+            config.imagePath = result["images"].as<std::string>();
 
         if (!config.videoPath.empty() && !config.imagePath.empty()) {
-            std::cerr << "❌ Error: Provide either --video or --images, not both.\n";
+            std::cerr
+                << "❌ Error: Provide either --video or --images, not both.\n";
             exit(1);
         }
 
@@ -112,4 +122,4 @@ class App {
     }
 };
 
-#endif  // _APP_H
+#endif // _APP_H

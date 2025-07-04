@@ -3,12 +3,12 @@
 #include <stdexcept>
 
 class FrontDistanceEstimator {
-   public:
+public:
     FrontDistanceEstimator(double focalLength, double realObjectWidth);
 
     double estimate(double pixelDistance);
 
-   private:
+private:
     double m_focalLength;
     double m_realObjectWidth;
 };

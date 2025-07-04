@@ -1,7 +1,9 @@
 #include <config.h>
 
 #include <utils.hpp>
-bool IsPathExist(const string &path) { return (access(path.c_str(), F_OK) == 0); }
+bool IsPathExist(const string &path) {
+    return (access(path.c_str(), F_OK) == 0);
+}
 
 bool IsFile(const string &path) {
     if (!IsPathExist(path)) {
@@ -15,7 +17,8 @@ bool IsFile(const string &path) {
 
 bool checkVideo(const string &path) {
     if (!IsFile(path)) {
-        std::cerr << "❌ Path does not exist or is not a file: " << path << std::endl;
+        std::cerr << "❌ Path does not exist or is not a file: " << path
+                  << std::endl;
         return false;
     }
 
@@ -23,7 +26,8 @@ bool checkVideo(const string &path) {
     // Convert to lowercase for robustness
     std::transform(suffix.begin(), suffix.end(), suffix.begin(), ::tolower);
 
-    const vector<string> validExt = {"mp4", "avi", "m4v", "mpeg", "mov", "mkv", "webm"};
+    const vector<string> validExt = {"mp4", "avi", "m4v", "mpeg",
+                                     "mov", "mkv", "webm"};
 
     if (std::find(validExt.begin(), validExt.end(), suffix) != validExt.end()) {
         return true;
@@ -48,7 +52,8 @@ bool checkImages(const string &path, vector<string> &imagePathList) {
         for (const auto &ext : extensions) {
             vector<string> tempList;
             cv::glob(path + "/" + ext, tempList, false);
-            imagePathList.insert(imagePathList.end(), tempList.begin(), tempList.end());
+            imagePathList.insert(imagePathList.end(), tempList.begin(),
+                                 tempList.end());
         }
         return !imagePathList.empty();
     } else {
@@ -75,5 +80,6 @@ double getCurrentTimeInSeconds() {
 int getTotalMilliseconds(const std::chrono::system_clock::time_point &start,
                          const std::chrono::system_clock::time_point &end) {
     return static_cast<int>(
-        std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+            .count());
 }
