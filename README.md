@@ -262,7 +262,7 @@ The system implements sophisticated adaptive cruise control:
 
 ## 📊 Performance Metrics
 
-Typical performance on NVIDIA RTX 3080:
+Typical performance on NVIDIA GTX 1650:
 - **Detection**: ~15ms per frame (640x640 input)
 - **Tracking**: ~5ms per frame
 - **Lane Detection**: ~10ms per frame
