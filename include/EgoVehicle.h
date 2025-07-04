@@ -10,6 +10,7 @@
 #include <opencv2/core.hpp>
 #include <string>
 #include <tuple>
+enum class DrivingState { emergencyBrake, closeFollow, slowTraffic, normalFollow, freeDrive };
 
 class EgoVehicle {
    public:
@@ -22,16 +23,20 @@ class EgoVehicle {
                                    std::deque<float> &speedChangeHistory, float &avgDistance,
                                    float &frontSpeed, std::string &action, cv::Scalar &actionColor);
 
+    static float getThrottleCmd() { return throttleCmd; }
+    static float getBrakeCmd() { return brakeCmd; }
+
    private:
+    static float throttleCmd;
+    static float brakeCmd;
     static float updateEgoSpeedSmooth(float currentSpeed, float targetSpeed, int urgencyLevel,
                                       float dt);
-    static void getActionAndColor(const std::string &drivingState, float speedChange,
-                                   std::string &action, cv::Scalar &color,
-                                   float &throttle_cmd, float &brake_cmd);
-    static std::pair<std::string, int> getDrivingState(float distance, float frontSpeed,
-                                                       float egoSpeed);
+    static void getActionAndColor(DrivingState drivingState, float speedChange, float egoSpeed,
+                                  std::string &action, cv::Scalar &color);
+    static std::pair<DrivingState, int> getDrivingState(float distance, float frontSpeed,
+                                                        float egoSpeed);
     static float calculateTargetSpeed(float distance, float frontSpeed, float egoSpeed,
-                                      const std::string &drivingState, int urgency);
+                                      DrivingState drivingState, int urgency);
 };
 
 #endif  // _EGO_VEHICLE_H
