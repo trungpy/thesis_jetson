@@ -354,11 +354,10 @@ void drawHUD(cv::Mat &image, float currentEgoSpeed, int accSpeed, int maxSpeed, 
                 2);
     // 7. Target ID
     if (targetId != -1) {
-        cv::putText(image, "Flow car id: " + std::to_string(targetId
-                ), {10, 210}, cv::FONT_HERSHEY_SIMPLEX, 0.8, white, 2);
+        cv::putText(image, "Flow car id: " + std::to_string(targetId), {10, 210},
+                    cv::FONT_HERSHEY_SIMPLEX, 0.8, white, 2);
     } else {
-        cv::putText(image, "No flow", {10, 210},
-                    cv::FONT_HERSHEY_SIMPLEX, 0.8, gray, 2);
+        cv::putText(image, "No flow", {10, 210}, cv::FONT_HERSHEY_SIMPLEX, 0.8, gray, 2);
     }
 }
 

@@ -29,8 +29,8 @@ void updateSpeedControl(double timeStart, int targetId, const cv::Rect &bestBox,
                         float &avgDistance, float &frontSpeed, std::string &action,
                         cv::Scalar &actionColor);
 
-void drawHUD(cv::Mat &image, float currentEgoSpeed, int accSpeed, int maxSpeed,
-             float frontSpeed, float avgDistance, const std::string &action,
-             const cv::Scalar &actionColor, double fps, int targetId);
+void drawHUD(cv::Mat &image, float currentEgoSpeed, int accSpeed, int maxSpeed, float frontSpeed,
+             float avgDistance, const std::string &action, const cv::Scalar &actionColor,
+             double fps, int targetId);
 
 #endif

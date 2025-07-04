@@ -1,6 +1,7 @@
-#include <ros/ros.h>
-#include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
+#include <image_transport/image_transport.h>
+#include <ros/ros.h>
+
 #include <opencv2/opencv.hpp>
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg) {
@@ -18,7 +19,7 @@ int main(int argc, char** argv) {
     ros::NodeHandle nh;
     image_transport::ImageTransport it(nh);
     image_transport::Subscriber sub = it.subscribe("/video/image", 1, imageCallback);
-    
+
     ros::spin();
     return 0;
 }

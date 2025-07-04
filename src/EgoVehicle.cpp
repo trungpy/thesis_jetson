@@ -2,7 +2,8 @@
 using namespace Config;
 
 // --- Function to get driving state ---
-std::pair<std::string, int> EgoVehicle::getDrivingState(float distance, float frontSpeed, float egoSpeed) {
+std::pair<std::string, int> EgoVehicle::getDrivingState(float distance, float frontSpeed,
+                                                        float egoSpeed) {
     if (distance < config.speedControl.criticalDistance) {
         return {"EMERGENCY_BRAKE", 3};
     } else if (distance < config.speedControl.minFollowingDistance) {
@@ -20,7 +21,7 @@ std::pair<std::string, int> EgoVehicle::getDrivingState(float distance, float fr
 
 // --- Function to calculate target speed ---
 float EgoVehicle::calculateTargetSpeed(float distance, float frontSpeed, float egoSpeed,
-                           const std::string &drivingState, int urgency) {
+                                       const std::string &drivingState, int urgency) {
     if (drivingState == "EMERGENCY_BRAKE") {
         // Emergency: reduce to 70% of current speed immediately
         return std::max(config.speedAdjustment.minSpeedKph, egoSpeed * 0.7f);
@@ -47,8 +48,8 @@ float EgoVehicle::calculateTargetSpeed(float distance, float frontSpeed, float e
     }
 }
 
-void EgoVehicle::getActionAndColor(const std::string &drivingState, float speedChange, std::string &action,
-                       cv::Scalar &color) {
+void EgoVehicle::getActionAndColor(const std::string &drivingState, float speedChange,
+                                   std::string &action, cv::Scalar &color) {
     if (drivingState == "EMERGENCY_BRAKE") {
         action = "EMERGENCY BRAKE";
         color = cv::Scalar(0, 0, 255);  // Red
@@ -80,7 +81,8 @@ void EgoVehicle::getActionAndColor(const std::string &drivingState, float speedC
     }
 }
 
-float EgoVehicle::updateEgoSpeedSmooth(float currentSpeed, float targetSpeed, int urgencyLevel, float dt) {
+float EgoVehicle::updateEgoSpeedSmooth(float currentSpeed, float targetSpeed, int urgencyLevel,
+                                       float dt) {
     float speedDiff = targetSpeed - currentSpeed;
 
     // Determine adjustment rate
@@ -116,13 +118,12 @@ float EgoVehicle::updateEgoSpeedSmooth(float currentSpeed, float targetSpeed, in
     return newSpeed;
 }
 
-void EgoVehicle::updateSpeedControl(double timeStart, int targetId, const cv::Rect &bestBox,
-                        float &currentEgoSpeed, double &lastSpeedUpdateTime,
-                        std::map<int, std::deque<float>> &objectBuffers,
-                        std::map<int, float> &prevDistances, std::map<int, double> &prevTimes,
-                        std::map<int, float> &smoothedSpeeds, std::deque<float> &speedChangeHistory,
-                        float &avgDistance, float &frontSpeed, std::string &action,
-                        cv::Scalar &actionColor) {
+void EgoVehicle::updateSpeedControl(
+    double timeStart, int targetId, const cv::Rect &bestBox, float &currentEgoSpeed,
+    double &lastSpeedUpdateTime, std::map<int, std::deque<float>> &objectBuffers,
+    std::map<int, float> &prevDistances, std::map<int, double> &prevTimes,
+    std::map<int, float> &smoothedSpeeds, std::deque<float> &speedChangeHistory, float &avgDistance,
+    float &frontSpeed, std::string &action, cv::Scalar &actionColor) {
     if (targetId != -1 && bestBox.height > 0) {
         float h = bestBox.height;
         float distance = (config.camera.realObjectWidth * config.camera.focalLength) / h;
