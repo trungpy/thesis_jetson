@@ -26,7 +26,8 @@ class EgoVehicle {
     static float updateEgoSpeedSmooth(float currentSpeed, float targetSpeed, int urgencyLevel,
                                       float dt);
     static void getActionAndColor(const std::string &drivingState, float speedChange,
-                                  std::string &action, cv::Scalar &color);
+                                   std::string &action, cv::Scalar &color,
+                                   float &throttle_cmd, float &brake_cmd);
     static std::pair<std::string, int> getDrivingState(float distance, float frontSpeed,
                                                        float egoSpeed);
     static float calculateTargetSpeed(float distance, float frontSpeed, float egoSpeed,

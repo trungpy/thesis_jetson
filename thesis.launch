@@ -8,5 +8,9 @@
     <!-- Video Subscriber Node -->
     <node name="video_subscriber" pkg="thesis" type="video_subscriber" output="screen">
         <param name="model_path" value="/home/trung/catkin_ws/src/thesis/models/30-06.engine" />
+        <param name="output_file" value="/home/trung/Desktop/live.avi"/>
+        <param name="enable_debug_output" value="true"/>
+        <param name="enable_data_logging" value="false"/>
+        <param name="enable_autonomous_control" value="true"/>
     </node>
 </launch>

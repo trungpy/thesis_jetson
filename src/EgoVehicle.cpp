@@ -47,40 +47,59 @@ float EgoVehicle::calculateTargetSpeed(float distance, float frontSpeed, float e
         return config.speedControl.cruiseSpeedKph;
     }
 }
-
 void EgoVehicle::getActionAndColor(const std::string &drivingState, float speedChange,
-                                   std::string &action, cv::Scalar &color) {
+                                   std::string &action, cv::Scalar &color,
+                                   float &throttle_cmd, float &brake_cmd) {
+    // Initialize commands
+    throttle_cmd = 0.0f;
+    brake_cmd = 0.0f;
+    
     if (drivingState == "EMERGENCY_BRAKE") {
         action = "EMERGENCY BRAKE";
         color = cv::Scalar(0, 0, 255);  // Red
+        throttle_cmd = 0.0f;
+        brake_cmd = 1.0f;  // Maximum brake
     } else if (drivingState == "CLOSE_FOLLOW") {
         action = "BRAKE/SLOW";
         color = cv::Scalar(0, 100, 255);  // Orange-Red
+        throttle_cmd = 0.0f;
+        brake_cmd = 0.6f;  // Strong braking
     } else if (drivingState == "SLOW_TRAFFIC") {
         action = "DECELERATE";
         color = cv::Scalar(0, 255, 255);  // Yellow
+        throttle_cmd = 0.0f;
+        brake_cmd = 0.3f;  // Moderate braking
     } else if (drivingState == "NORMAL_FOLLOW") {
         if (std::abs(speedChange) < 1.0f) {
             action = "MAINTAIN";
             color = cv::Scalar(0, 255, 0);  // Green
+            throttle_cmd = 0.2f;  // Light throttle to maintain speed
+            brake_cmd = 0.0f;
         } else if (speedChange > 0) {
             action = "ACCELERATE";
             color = cv::Scalar(255, 255, 0);  // Cyan
+            throttle_cmd = std::min(0.5f, speedChange * 0.1f);  // Proportional throttle
+            brake_cmd = 0.0f;
         } else {
             action = "DECELERATE";
             color = cv::Scalar(0, 255, 255);  // Yellow
+            throttle_cmd = 0.0f;
+            brake_cmd = std::min(0.4f, std::abs(speedChange) * 0.1f);  // Proportional brake
         }
     } else {  // FREE_DRIVE
         if (speedChange > 2.0f) {
             action = "ACCELERATE";
             color = cv::Scalar(255, 255, 0);  // Cyan
+            throttle_cmd = std::min(0.8f, speedChange * 0.1f);  // Higher throttle for free drive
+            brake_cmd = 0.0f;
         } else {
             action = "CRUISE";
             color = cv::Scalar(0, 255, 0);  // Green
+            throttle_cmd = 0.3f;  // Cruise throttle
+            brake_cmd = 0.0f;
         }
     }
 }
-
 float EgoVehicle::updateEgoSpeedSmooth(float currentSpeed, float targetSpeed, int urgencyLevel,
                                        float dt) {
     float speedDiff = targetSpeed - currentSpeed;
@@ -149,7 +168,7 @@ void EgoVehicle::updateSpeedControl(
         } else {
             avgDistance = std::accumulate(buf.begin(), buf.end(), 0.0f) / buf.size();  // mean
         }
-
+        float throttle_cmd = 0.0f, brake_cmd = 0.0f;
         // ✅ Always update smoothed speed
         double dt = timeStart - prevTimes[targetId];
         if (dt >= config.distanceSpeed.minTimeDelta) {
@@ -183,7 +202,7 @@ void EgoVehicle::updateSpeedControl(
             if (speedChangeHistory.size() > 10) speedChangeHistory.pop_front();
 
             lastSpeedUpdateTime = timeStart;
-            getActionAndColor(state, speedDelta, action, actionColor);
+            getActionAndColor(state, speedDelta, action, actionColor,throttle_cmd,brake_cmd);
 
             std::cout << "[+] ID " << targetId << " | Dist: " << std::fixed << std::setprecision(1)
                       << avgDistance << "m | Front: " << frontSpeed
@@ -191,6 +210,7 @@ void EgoVehicle::updateSpeedControl(
                       << " | Action: " << action << std::endl;
         }
     } else {
+        currentEgoSpeed = 60.0f;
         // No target: cruise mode
         if (timeStart - lastSpeedUpdateTime >= config.speedAdjustment.speedUpdateInterval) {
             if (std::abs(currentEgoSpeed - config.speedControl.cruiseSpeedKph) > 1) {
