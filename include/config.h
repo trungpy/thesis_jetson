@@ -63,6 +63,13 @@ struct SpeedAdjustment {
     float aggressiveAdjustment;
     float minSpeedKph;
     float maxSpeedKph;
+
+    // New acceleration-based parameters
+    float maxAcceleration;     // Maximum acceleration in m/s² (e.g., 3.0)
+    float maxDeceleration;     // Maximum deceleration in m/s² (e.g., -5.0)
+    float comfortDeceleration; // Comfortable deceleration in m/s² (e.g., -2.0)
+    float maxJerk; // Maximum jerk (rate of acceleration change) in m/s³
+                   // (e.g., 2.0)
 };
 
 struct ObjectTracking {

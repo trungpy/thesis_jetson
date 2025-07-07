@@ -22,7 +22,6 @@
 #include <Detect.h>
 #include <LaneDetector.h>
 #include <app.h>
-#include <process.h>
 #include <utils.hpp>
 
 class EnhancedVideoSubscriber {
@@ -59,7 +58,6 @@ private:
     std::map<int, double> prevTimes_;
     std::map<int, float> smoothedSpeeds_;
 
-    std::string action;
     int targetId_;
     int classId_;
     cv::Rect bestBox_;
@@ -76,7 +74,6 @@ private:
     DataLogger dataLogger_;
 
     std::deque<double> processing_times_;
-    double avg_processing_time_;
     int total_detections_;
 
     bool emergency_stop_;
@@ -91,7 +88,6 @@ private:
     std::string getModelPath();
     void publishEnhancedData(float ego_speed, const std::string &action_str,
                              float throttle_cmd, float brake_cmd);
-    void updatePerformanceMetrics(double processing_time);
     void checkSafetyConditions();
     void processEnhancedFrame(cv::Mat &image);
     void

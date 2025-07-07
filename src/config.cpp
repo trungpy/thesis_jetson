@@ -1,4 +1,4 @@
-#include "config.h"
+#include <config.h>
 
 #include <fstream>
 #include <stdexcept>
@@ -29,7 +29,10 @@ void loadConfig(const std::string &configPath) {
             throw std::runtime_error("Could not open config file: " +
                                      configPath);
         }
-
+        config.speedAdjustment.maxAcceleration = 3.0f;      // 3 m/s²
+        config.speedAdjustment.maxDeceleration = -5.0f;     // -5 m/s²
+        config.speedAdjustment.comfortDeceleration = -2.0f; // -2 m/s²
+        config.speedAdjustment.maxJerk = 2.0f;              // 2 m/s³
         nlohmann::json jsonConfig;
         configFile >> jsonConfig;
 
@@ -60,13 +63,28 @@ void loadConfig(const std::string &configPath) {
             jsonConfig["adaptiveSpeedControl"]["criticalDistance"]};
 
         // Parse speed adjustment
-        config.speedAdjustment = {
-            jsonConfig["speedAdjustment"]["speedUpdateInterval"],
-            jsonConfig["speedAdjustment"]["gentleAdjustment"],
-            jsonConfig["speedAdjustment"]["moderateAdjustment"],
-            jsonConfig["speedAdjustment"]["aggressiveAdjustment"],
-            jsonConfig["speedAdjustment"]["minSpeedKph"],
-            jsonConfig["speedAdjustment"]["maxSpeedKph"]};
+        config.speedAdjustment.speedUpdateInterval =
+            jsonConfig["speedAdjustment"]["speedUpdateInterval"];
+        config.speedAdjustment.gentleAdjustment =
+            jsonConfig["speedAdjustment"]["gentleAdjustment"];
+        config.speedAdjustment.moderateAdjustment =
+            jsonConfig["speedAdjustment"]["moderateAdjustment"];
+        config.speedAdjustment.aggressiveAdjustment =
+            jsonConfig["speedAdjustment"]["aggressiveAdjustment"];
+        config.speedAdjustment.minSpeedKph =
+            jsonConfig["speedAdjustment"]["minSpeedKph"];
+        config.speedAdjustment.maxSpeedKph =
+            jsonConfig["speedAdjustment"]["maxSpeedKph"];
+
+        // Add this to read from JSON properly
+        config.speedAdjustment.maxAcceleration =
+            jsonConfig["speedAdjustment"]["maxAcceleration"];
+        config.speedAdjustment.maxDeceleration =
+            jsonConfig["speedAdjustment"]["maxDeceleration"];
+        config.speedAdjustment.comfortDeceleration =
+            jsonConfig["speedAdjustment"]["comfortDeceleration"];
+        config.speedAdjustment.maxJerk =
+            jsonConfig["speedAdjustment"]["maxJerk"];
 
         // Parse object tracking
         config.objectTracking.trackClasses =

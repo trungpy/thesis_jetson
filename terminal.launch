@@ -1,0 +1,14 @@
+<launch>
+    <node name="echo_ego_speed" pkg="thesis" type="echo_ego_speed"
+        output="screen" launch-prefix="gnome-terminal --" />
+
+    <node name="echo_driving_action" pkg="thesis" type="echo_driving_action"
+        output="screen" launch-prefix="gnome-terminal --" />
+
+    <node name="echo_throttle" pkg="thesis" type="echo_throttle"
+        output="screen" launch-prefix="gnome-terminal --" />
+
+    <node name="echo_brake" pkg="thesis" type="echo_brake"
+        output="screen" launch-prefix="gnome-terminal --" />
+
+</launch>

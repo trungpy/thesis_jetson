@@ -2,18 +2,16 @@
 
 void HUDRenderer::setEmergencyStop(bool active) { emergency_stop_ = active; }
 
-void HUDRenderer::setAvgProcessingTime(double ms) { avg_processing_time_ = ms; }
-
 void HUDRenderer::render(cv::Mat &image, float ego_speed, int acc_speed,
-                         int max_speed, float front_speed, float avg_distance,
-                         bool accActive, const std::string &action_str,
+                         float front_speed, float avg_distance, bool accActive,
+                         const std::string &action_str,
                          const cv::Scalar &action_color, double fps,
-                         int target_id, int detection_count) {
+                         int target_id) {
     int font = cv::FONT_HERSHEY_SIMPLEX;
     double font_scale = 0.6;
     int thickness = 2;
 
-    cv::rectangle(image, cv::Point(10, 10), cv::Point(420, 250),
+    cv::rectangle(image, cv::Point(10, 10), cv::Point(420, 200),
                   cv::Scalar(0, 0, 0, 128), -1);
     cv::putText(image, "Enhanced Driving Assistant", cv::Point(20, 35), font,
                 0.7, cv::Scalar(255, 255, 255), 2);
@@ -26,12 +24,6 @@ void HUDRenderer::render(cv::Mat &image, float ego_speed, int acc_speed,
     cv::putText(image, "Target: " + std::to_string(acc_speed) + " km/h",
                 cv::Point(20, 105), font, font_scale, cv::Scalar(255, 255, 0),
                 thickness);
-
-    if (max_speed != -1) {
-        cv::putText(image, "Limit: " + std::to_string(max_speed) + " km/h",
-                    cv::Point(20, 125), font, font_scale, cv::Scalar(255, 0, 0),
-                    thickness);
-    }
 
     cv::putText(image, "Action: " + action_str, cv::Point(20, 155), font,
                 font_scale, action_color, thickness);
@@ -47,14 +39,6 @@ void HUDRenderer::render(cv::Mat &image, float ego_speed, int acc_speed,
 
     cv::putText(image, "FPS: " + std::to_string((int)fps), cv::Point(20, 195),
                 font, font_scale, cv::Scalar(255, 255, 255), thickness);
-    cv::putText(image, "Detections: " + std::to_string(detection_count),
-                cv::Point(20, 215), font, font_scale, cv::Scalar(255, 255, 255),
-                thickness);
-    cv::putText(image,
-                "Proc Time: " +
-                    std::to_string((int)(avg_processing_time_ * 1000)) + "ms",
-                cv::Point(20, 235), font, font_scale, cv::Scalar(255, 255, 255),
-                thickness);
 
     if (emergency_stop_) {
         cv::rectangle(image, cv::Point(image.cols - 150, 10),

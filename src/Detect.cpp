@@ -133,7 +133,7 @@ void Detect::infer() {
 #endif
 }
 
-void Detect::postprocess(Mat &image, vector<Detection> &output) {
+void Detect::postProcess(Mat &image, vector<Detection> &output) {
     // Memcpy from device output buffer to host output buffer
     CUDA_CHECK(cudaMemcpyAsync(cpu_output_buffer, gpu_buffers[1],
                                num_detections * detection_attribute_size *
@@ -268,11 +268,11 @@ void Detect::draw(cv::Mat &image, const std::vector<STrack> &output) {
     const float ratio_h = static_cast<float>(inputHeight) / image.rows;
     const float ratio_w = static_cast<float>(inputWeight) / image.cols;
 
-    for (const auto &detection : output) {
-        const auto &tlwh = detection.tlwh;
+    for (const auto &obj : output) {
+        const auto &tlwh = obj.tlwh;
         cv::Rect box(tlwh[0], tlwh[1], tlwh[2], tlwh[3]);
 
-        int classId = detection.classId;
+        int classId = obj.classId;
 
         cv::Scalar color(config.objectTracking.colors[classId][0],
                          config.objectTracking.colors[classId][1],
@@ -284,8 +284,8 @@ void Detect::draw(cv::Mat &image, const std::vector<STrack> &output) {
         // Estimate and draw distance if class is relevant
         if (classId == 2 || classId == 4 || classId == 5) {
             std::ostringstream ss;
-            ss << std::fixed << std::setprecision(2)
-               << detection.estimatedDistance << "m";
+            ss << std::fixed << std::setprecision(2) << obj.estimatedDistance
+               << "m";
 
             // Smaller font for distance text
             cv::putText(image, ss.str(), cv::Point(box.x + 2, box.y - 20),
@@ -296,7 +296,7 @@ void Detect::draw(cv::Mat &image, const std::vector<STrack> &output) {
         // Prepare and draw label with smaller font
         std::ostringstream label_ss;
         label_ss << config.objectTracking.classNames[classId] << "."
-                 << std::fixed << std::setprecision(2) << detection.score;
+                 << std::fixed << std::setprecision(2) << obj.score;
 
         std::string label = label_ss.str();
 
@@ -305,7 +305,7 @@ void Detect::draw(cv::Mat &image, const std::vector<STrack> &output) {
                     cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 255), 1,
                     cv::LINE_AA);
 
-        cv::putText(image, cv::format("%d", detection.track_id),
+        cv::putText(image, cv::format("%d", obj.track_id),
                     cv::Point(box.x + 2, box.y + box.height - 5),
                     cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 255, 255), 1,
                     cv::LINE_AA);

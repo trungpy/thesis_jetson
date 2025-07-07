@@ -38,7 +38,7 @@ public:
     void infer();
 
     // Postprocess the model's output to extract detection results
-    void postprocess(Mat &image, vector<Detection> &output);
+    void postProcess(Mat &image, vector<Detection> &output);
 
     // Draw bounding boxes and labels on the original image
     void draw(Mat &image, const vector<STrack> &output);

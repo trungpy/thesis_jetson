@@ -13,7 +13,7 @@ EnhancedVideoSubscriber::EnhancedVideoSubscriber()
       speedLimitStabilizer_(6),
       currentEgoSpeed_(config.speedControl.initialSpeedKph),
       lastSpeedUpdateTime_(0), targetId_(-1), classId_(-1), lostTargetCount_(0),
-      framesCurrentTargetOutsideLane_(0), action("INITIALIZING") {
+      framesCurrentTargetOutsideLane_(0) {
     fpsStartTime_ = chrono::steady_clock::now();
     initializeEnhancedFeatures();
     image_sub_ = it_.subscribe("video/image", 1,
@@ -103,19 +103,6 @@ void EnhancedVideoSubscriber::publishEnhancedData(float ego_speed,
     brake_pub_.publish(brake_msg);
 }
 
-void EnhancedVideoSubscriber::updatePerformanceMetrics(double processing_time) {
-    processing_times_.push_back(processing_time);
-    if (processing_times_.size() > 100) {
-        processing_times_.pop_front();
-    }
-
-    double sum = 0.0;
-    for (double time : processing_times_) {
-        sum += time;
-    }
-    avg_processing_time_ = sum / processing_times_.size();
-}
-
 void EnhancedVideoSubscriber::checkSafetyConditions() {
     double current_time = ros::Time::now().toSec();
 
@@ -137,7 +124,6 @@ void EnhancedVideoSubscriber::checkSafetyConditions() {
 
 void EnhancedVideoSubscriber::imageCallback(
     const sensor_msgs::Image::ConstPtr &msg) {
-    auto callback_start = chrono::high_resolution_clock::now();
 
     try {
         cv_bridge::CvImagePtr cv_ptr =
@@ -162,11 +148,6 @@ void EnhancedVideoSubscriber::imageCallback(
     } catch (const std::exception &e) {
         ROS_ERROR("Processing exception: %s", e.what());
     }
-
-    auto callback_end = chrono::high_resolution_clock::now();
-    double callback_time =
-        chrono::duration<double>(callback_end - callback_start).count();
-    updatePerformanceMetrics(callback_time);
 }
 
 void EnhancedVideoSubscriber::processEnhancedFrame(cv::Mat &image) {
@@ -178,7 +159,7 @@ void EnhancedVideoSubscriber::processEnhancedFrame(cv::Mat &image) {
     std::vector<Detection> res;
     model_.preprocess(image);
     model_.infer();
-    model_.postprocess(image, res);
+    model_.postProcess(image, res);
 
     std::vector<Object> objects = filterDetections(res);
     std::vector<cv::Vec4i> lanes = laneDetector_.detectLanes(image);
@@ -199,8 +180,7 @@ void EnhancedVideoSubscriber::processEnhancedFrame(cv::Mat &image) {
     egoVehicle_.updateSpeedControl(
         timeStart, targetId_, bestBox_, currentEgoSpeed_, lastSpeedUpdateTime_,
         objectBuffers_, prevDistances_, prevTimes_, smoothedSpeeds_,
-        speedChangeHistory_, avgDistance, frontAbsoluteSpeed, action,
-        actionColor);
+        speedChangeHistory_, avgDistance, frontAbsoluteSpeed, actionColor);
 
     updateSpeedLimits(outputStracks);
 
@@ -210,21 +190,21 @@ void EnhancedVideoSubscriber::processEnhancedFrame(cv::Mat &image) {
     updateFPS();
 
     hudRenderer_.setEmergencyStop(emergency_stop_);
-    hudRenderer_.setAvgProcessingTime(avg_processing_time_);
-    hudRenderer_.render(image, currentEgoSpeed_, accSpeed_, maxSpeed_,
-                        frontAbsoluteSpeed, avgDistance, accActive, action,
-                        actionColor, fps_, targetId_, outputStracks.size());
+    hudRenderer_.render(image, currentEgoSpeed_, accSpeed_, frontAbsoluteSpeed,
+                        avgDistance, accActive, egoVehicle_.getAction(),
+                        actionColor, fps_, targetId_);
 
-    publishEnhancedData(currentEgoSpeed_, action, egoVehicle_.getThrottleCmd(),
+    publishEnhancedData(currentEgoSpeed_, egoVehicle_.getAction(),
+                        egoVehicle_.getThrottleCmd(),
                         egoVehicle_.getBrakeCmd());
 
     if (enable_data_logging_) {
         auto end = chrono::high_resolution_clock::now();
         double processing_time = chrono::duration<double>(end - start).count();
         dataLogger_.log(timeStart, frameCount_, fps_, currentEgoSpeed_,
-                        targetId_, action, outputStracks.size(), avgDistance,
-                        frontAbsoluteSpeed, processing_time, maxSpeed_,
-                        accSpeed_);
+                        targetId_, egoVehicle_.getAction(),
+                        outputStracks.size(), avgDistance, frontAbsoluteSpeed,
+                        processing_time, maxSpeed_, accSpeed_);
     }
 
     if (enable_debug_output_) {
@@ -328,7 +308,6 @@ void EnhancedVideoSubscriber::executeEnhancedTargetSwitching(
                 targetId_ = -1;
                 classId_ = -1;
                 lostTargetCount_ = 0;
-                action = "FREE DRIVE";
             }
         }
     } else if (detectedTargetId != -1 && detectedTargetId != targetId_) {

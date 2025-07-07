@@ -1,8 +1,16 @@
 #ifndef _APP_H
 #define _APP_H
+#include <BYTETracker.h>
+#include <LaneDetector.h>
 
-#include <process.h>
+#include <cxxopts.hpp>
+#include <iostream>
+#include <string>
+#include <utils.hpp>
+#include <vector>
 
+#include "Detect.h"
+#include "config.h"
 /**
  * @brief Setting up Tensorrt logger
  */
