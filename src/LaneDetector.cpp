@@ -38,7 +38,7 @@ std::vector<cv::Vec4i> LaneDetector::detectLanes(const cv::Mat &frame) {
     cv::Mat edges = preprocess(frame);
 
     std::vector<cv::Vec4i> raw_lines = houghTransform(edges);
-    cv::imshow("edge", edges);
+    // cv::imshow("edge", edges);
 
     // Filter and classify lines
     auto [left_lines, right_lines] = filterLines(raw_lines);

@@ -102,12 +102,18 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
 endif()
 
 # Gather all cpp/cu files
-file(GLOB_RECURSE ALL_SOURCES src/*.cpp src/*.cu)
+file(GLOB_RECURSE ALL_SOURCES src/*.cpp src/modules/*.cpp src/*.cu)
 
 # Define entry points that should be excluded from shared sources
 set(VIDEO_PUBLISHER_ENTRY src/video_publisher.cpp)
 set(VIDEO_SUBSCRIBER_ENTRY src/video_subscriber.cpp)
 set(VIDEO_SUBSCRIBER_CAPTURE_ENTRY src/video_subscriber_capture.cpp)
+
+
+set(ECHO_EGO_SPEED_ENTRY src/echo_ego_speed.cpp)
+set(ECHO_DRIVING_ACTION_ENTRY src/echo_driving_action.cpp)
+set(ECHO_THROTTLE_ENTRY src/echo_throttle.cpp)
+set(ECHO_BRAKE_ENTRY src/echo_brake.cpp)
 
 # Remove ALL entry points from shared sources
 set(SHARED_SOURCES ${ALL_SOURCES})
@@ -118,6 +124,14 @@ list(REMOVE_ITEM SHARED_SOURCES
      ${VIDEO_PUBLISHER_ENTRY}
      ${VIDEO_SUBSCRIBER_ENTRY}
      ${VIDEO_SUBSCRIBER_CAPTURE_ENTRY}
+     ${CMAKE_CURRENT_SOURCE_DIR}/${ECHO_EGO_SPEED_ENTRY}
+     ${CMAKE_CURRENT_SOURCE_DIR}/${ECHO_DRIVING_ACTION_ENTRY}
+     ${CMAKE_CURRENT_SOURCE_DIR}/${ECHO_THROTTLE_ENTRY}
+     ${CMAKE_CURRENT_SOURCE_DIR}/${ECHO_BRAKE_ENTRY}
+     ${ECHO_EGO_SPEED_ENTRY}
+     ${ECHO_DRIVING_ACTION_ENTRY}
+     ${ECHO_THROTTLE_ENTRY}
+     ${ECHO_BRAKE_ENTRY}
 )
 
 # Debug: Print what's in SHARED_SOURCES to verify
@@ -235,3 +249,14 @@ if(TARGET video_subscriber)
         INSTALL_RPATH "${TensorRT_LIB_DIR}:${CUDA_TOOLKIT_ROOT_DIR}/lib64"
     )
 endif()
+
+
+add_executable(echo_ego_speed ${ECHO_EGO_SPEED_ENTRY})
+add_executable(echo_driving_action ${ECHO_DRIVING_ACTION_ENTRY})
+add_executable(echo_throttle ${ECHO_THROTTLE_ENTRY})
+add_executable(echo_brake ${ECHO_BRAKE_ENTRY})
+
+target_link_libraries(echo_ego_speed ${catkin_LIBRARIES})
+target_link_libraries(echo_driving_action ${catkin_LIBRARIES})
+target_link_libraries(echo_throttle ${catkin_LIBRARIES})
+target_link_libraries(echo_brake ${catkin_LIBRARIES})

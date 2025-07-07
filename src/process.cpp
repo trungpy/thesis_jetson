@@ -263,19 +263,15 @@ int runVideo(const std::string &path, Detect &model) {
             bestBox = bestBoxTmp;
             lostTargetCount = 0;
             framesCurrentTargetOutsideLane = 0;
-
-            // Debug output
-            std::cout << "Target switched to ID " << targetId
-                      << " - Reason: " << switchReason << std::endl;
         }
 
         float avgDistance = 0.0f;
         float frontAbsoluteSpeed = 0.0f;
-        EgoVehicle::updateSpeedControl(
-            timeStart, targetId, bestBox, currentEgoSpeed, lastSpeedUpdateTime,
-            objectBuffers, prevDistances, prevTimes, smoothedSpeeds,
-            speedChangeHistory, avgDistance, frontAbsoluteSpeed, action,
-            actionColor);
+        // EgoVehicle::updateSpeedControl(
+        //     timeStart, targetId, bestBox, currentEgoSpeed,
+        //     lastSpeedUpdateTime, objectBuffers, prevDistances, prevTimes,
+        //     smoothedSpeeds, speedChangeHistory, avgDistance,
+        //     frontAbsoluteSpeed, action, actionColor);
 
         // Always display information on frame
         drawHUD(image, currentEgoSpeed, accSpeed, maxSpeed, frontAbsoluteSpeed,

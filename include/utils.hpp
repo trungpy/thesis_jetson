@@ -1,12 +1,12 @@
 #ifndef _UTILS_H
 #define _UTILS_H
 
-#include <sys/stat.h>
-#include <unistd.h>
-
+#include <chrono>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <string>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 using namespace std;
 bool checkVideo(const string &path);

@@ -1,16 +1,29 @@
 <launch>
     <!-- Video Publisher Node -->
     <node name="video_publisher" pkg="thesis" type="video_publisher">
-        <param name="video_path" value="/home/trung/Desktop/Thesis_University/c++/videos/test_video_640x640.mp4" />
-        <param name="fps" value="35.0" />
+        <param name="video_path"
+            value="/home/trung/Desktop/Thesis_University/c++/videos/test_video_640x640.mp4" />
+        <param name="fps" value="30.0" />
     </node>
 
     <!-- Video Subscriber Node -->
     <node name="video_subscriber" pkg="thesis" type="video_subscriber" output="screen">
         <param name="model_path" value="/home/trung/catkin_ws/src/thesis/models/30-06.engine" />
-        <param name="output_file" value="/home/trung/Desktop/live.avi"/>
-        <param name="enable_debug_output" value="true"/>
-        <param name="enable_data_logging" value="false"/>
-        <param name="enable_autonomous_control" value="true"/>
+        <param name="output_dir" value="/home/trung/Desktop/logging" />
+        <param name="enable_debug_output" value="true" />
+        <param name="enable_data_logging" value="true" />
     </node>
+
+    <!-- Echo Nodes: Mỗi node mở trong 1 terminal riêng -->
+    <node name="echo_ego_speed" pkg="thesis" type="echo_ego_speed"
+        output="screen" launch-prefix="gnome-terminal --" />
+
+    <node name="echo_driving_action" pkg="thesis" type="echo_driving_action"
+        output="screen" launch-prefix="gnome-terminal --" />
+
+    <node name="echo_throttle" pkg="thesis" type="echo_throttle"
+        output="screen" launch-prefix="gnome-terminal --" />
+
+    <node name="echo_brake" pkg="thesis" type="echo_brake"
+        output="screen" launch-prefix="gnome-terminal --" />
 </launch>
