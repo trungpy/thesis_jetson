@@ -23,7 +23,7 @@ class EgoVehicle {
 public:
     // Constructor
     EgoVehicle()
-        : throttleCmd(0.0f), brakeCmd(0.0f), currentAcceleration(0.0f) {}
+        : throttleCmd(0.0f), brakeCmd(0.0f), currentAcceleration(0.0f), engineForce(0.0f), throttleForce(0.0f), brakeForce(0.0f) {}
 
     void updateSpeedControl(double timeStart, int targetId,
                             const cv::Rect &bestBox, float &currentEgoSpeed,
@@ -40,12 +40,18 @@ public:
     float getBrakeCmd() { return this->brakeCmd; }
     float getCurrentAcceleration() { return this->currentAcceleration; }
     std::string getAction() { return this->action; }
+    float getEngineForce() { return this->engineForce; }
+    float getThrottleForce() { return this->throttleForce; }
+    float getBrakeForce() { return this->brakeForce; }
 
 private:
     std::string action;
     float throttleCmd;
     float brakeCmd;
     float currentAcceleration; // Current acceleration in m/s²
+    float engineForce;
+    float throttleForce;
+    float brakeForce;
 
     // Modified methods for acceleration-based control
     float updateEgoSpeedWithAcceleration(float currentSpeed,
@@ -62,6 +68,9 @@ private:
     // Existing methods
     std::pair<DrivingState, int>
     getDrivingState(float distance, float frontSpeed, float egoSpeed);
+
+    // New method for calculating engine, throttle, and brake forces
+    void calculateEngineForces(float egoSpeed);
 };
 
 #endif // _EGO_VEHICLE_H

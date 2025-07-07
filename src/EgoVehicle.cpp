@@ -299,6 +299,12 @@ void EgoVehicle::updateSpeedControl(
             currentEgoSpeed = this->updateEgoSpeedWithAcceleration(
                 currentEgoSpeed, targetAcceleration, urgency, dt);
 
+            // Clamp ego speed to not exceed cruiseSpeedKph
+            float cruiseSpeed = config.speedControl.cruiseSpeedKph;
+            if (currentEgoSpeed > cruiseSpeed) {
+                currentEgoSpeed = cruiseSpeed;
+            }
+
             // Store acceleration for history tracking
             speedChangeHistory.push_back(this->currentAcceleration);
             if (speedChangeHistory.size() > 10)
@@ -307,6 +313,8 @@ void EgoVehicle::updateSpeedControl(
             lastSpeedUpdateTime = timeStart;
             this->getActionAndColor(state, this->currentAcceleration,
                                     currentEgoSpeed, actionColor);
+            // Calculate engine, throttle, and brake forces
+            this->calculateEngineForces(currentEgoSpeed);
         }
     } else {
         // No target: cruise mode
@@ -321,7 +329,15 @@ void EgoVehicle::updateSpeedControl(
                     currentEgoSpeed, targetAcceleration, 0, dt);
             }
 
+            // Clamp ego speed to not exceed cruiseSpeedKph
+            float maxCruiseSpeed = config.speedControl.cruiseSpeedKph;
+            if (currentEgoSpeed > maxCruiseSpeed) {
+                currentEgoSpeed = maxCruiseSpeed;
+            }
+
             lastSpeedUpdateTime = timeStart;
+            // Calculate engine, throttle, and brake forces
+            this->calculateEngineForces(currentEgoSpeed);
         }
 
         frontSpeed = 0.0f;
@@ -331,4 +347,18 @@ void EgoVehicle::updateSpeedControl(
         this->brakeCmd = 0.0;
         actionColor = cv::Scalar(200, 200, 200);
     }
+}
+
+// --- NEW: Function to calculate engine, throttle, and brake forces ---
+void EgoVehicle::calculateEngineForces(float egoSpeed) {
+    // Assume vehicle mass (kg)
+    const float vehicleMass = 1500.0f;
+    // Convert speed from km/h to m/s
+    float speedMS = egoSpeed / 3.6f;
+    // Engine force = mass * acceleration
+    this->engineForce = vehicleMass * this->currentAcceleration;
+    // Throttle force = proportional to throttleCmd
+    this->throttleForce = vehicleMass * this->throttleCmd * config.speedAdjustment.maxAcceleration;
+    // Brake force = proportional to brakeCmd
+    this->brakeForce = vehicleMass * this->brakeCmd * (-config.speedAdjustment.maxDeceleration);
 }

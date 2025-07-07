@@ -13,5 +13,6 @@ public:
     void render(cv::Mat &image, float ego_speed, int acc_speed,
                 float front_speed, float avg_distance, bool accActive,
                 const std::string &action_str, const cv::Scalar &action_color,
-                double fps, int target_id);
+                double fps, int target_id,
+                float engine_force, float throttle_force, float brake_force);
 };
