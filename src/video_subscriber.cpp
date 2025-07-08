@@ -1,5 +1,4 @@
 #include "modules/EnhancedVideoSubscriber.h"
-#include <app.h>
 #include <ros/ros.h>
 
 using namespace Config;

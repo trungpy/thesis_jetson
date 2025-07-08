@@ -10,7 +10,7 @@
 #include <opencv2/core.hpp>
 #include <string>
 #include <tuple>
-
+using namespace Config;
 enum class DrivingState {
     emergencyBrake,
     closeFollow,
@@ -23,7 +23,8 @@ class EgoVehicle {
 public:
     // Constructor
     EgoVehicle()
-        : throttleCmd(0.0f), brakeCmd(0.0f), currentAcceleration(0.0f), engineForce(0.0f), throttleForce(0.0f), brakeForce(0.0f) {}
+        : throttleCmd(0.0f), brakeCmd(0.0f), currentAcceleration(0.0f),
+          engineForce(0.0f), throttleForce(0.0f), brakeForce(0.0f) {}
 
     void updateSpeedControl(double timeStart, int targetId,
                             const cv::Rect &bestBox, float &currentEgoSpeed,
@@ -52,7 +53,8 @@ private:
     float engineForce;
     float throttleForce;
     float brakeForce;
-
+    // Assume vehicle mass (kg)
+    const float vehicleMass = config.speedAdjustment.vehicleMass;
     // Modified methods for acceleration-based control
     float updateEgoSpeedWithAcceleration(float currentSpeed,
                                          float targetAcceleration,

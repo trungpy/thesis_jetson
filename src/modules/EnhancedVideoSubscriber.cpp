@@ -176,7 +176,7 @@ void EnhancedVideoSubscriber::processEnhancedFrame(cv::Mat &image) {
     cv::Scalar actionColor = cv::Scalar(0, 255, 0);
     float avgDistance = 0.0f;
     float frontAbsoluteSpeed = 0.0f;
-    bool accActive = classId_ == 2 ? true : false;
+    bool accActive = isTrackingClass(classId_);
     egoVehicle_.updateSpeedControl(
         timeStart, targetId_, bestBox_, currentEgoSpeed_, lastSpeedUpdateTime_,
         objectBuffers_, prevDistances_, prevTimes_, smoothedSpeeds_,
@@ -190,9 +190,11 @@ void EnhancedVideoSubscriber::processEnhancedFrame(cv::Mat &image) {
     updateFPS();
 
     hudRenderer_.setEmergencyStop(emergency_stop_);
-    hudRenderer_.render(image, currentEgoSpeed_, accSpeed_, frontAbsoluteSpeed,
-                        avgDistance, accActive, egoVehicle_.getAction(),
-                        actionColor, fps_, targetId_);
+    hudRenderer_.render(
+        image, currentEgoSpeed_, accSpeed_, frontAbsoluteSpeed, avgDistance,
+        accActive, egoVehicle_.getAction(), actionColor, fps_, targetId_,
+        egoVehicle_.getEngineForce(), egoVehicle_.getThrottleForce(),
+        egoVehicle_.getBrakeForce());
 
     publishEnhancedData(currentEgoSpeed_, egoVehicle_.getAction(),
                         egoVehicle_.getThrottleCmd(),
@@ -382,7 +384,6 @@ void EnhancedVideoSubscriber::updateSpeedLimits(
     if (noSpeedLimitFrames_ >= 20) {
         speedLimitStabilizer_.clear();
     }
-    accSpeed_ = config.speedControl.cruiseSpeedKph;
     // if (maxSpeed_ != -1) {
     //     int targetSpeed =
     //         std::min(maxSpeed_, config.speedControl.cruiseSpeedKph);

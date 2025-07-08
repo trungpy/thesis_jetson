@@ -21,7 +21,7 @@
 #include <BYTETracker.h>
 #include <Detect.h>
 #include <LaneDetector.h>
-#include <app.h>
+#include <Logger.h>
 #include <utils.hpp>
 
 class EnhancedVideoSubscriber {

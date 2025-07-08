@@ -64,19 +64,17 @@ bool checkImages(const string &path, vector<string> &imagePathList) {
 std::vector<Object> filterDetections(const std::vector<Detection> &res) {
     std::vector<Object> objects;
     for (const auto &obj : res) {
-        if (isTrackingClass(obj.classId)) {
-            objects.push_back({obj.bbox, obj.classId, obj.conf});
-        }
+        objects.push_back({obj.bbox, obj.classId, obj.conf});
     }
     return objects;
 }
 
 bool isTrackingClass(int classId) {
-    // for (auto &c : Config::config.objectTracking.trackClasses) {
-    //     if (c == classId) return true;
-    //   if (classId == c) return true;
-    // }
-    return true;
+    for (auto &c : Config::config.objectTracking.trackClasses) {
+        if (classId == c)
+            return true;
+    }
+    return false;
 }
 
 double getCurrentTimeInSeconds() {

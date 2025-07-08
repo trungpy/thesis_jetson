@@ -1,7 +1,7 @@
 #include <EgoVehicle.h>
 
 #include <algorithm>
-using namespace Config;
+
 // --- Function to get driving state ---
 std::pair<DrivingState, int>
 EgoVehicle::getDrivingState(float distance, float frontSpeed, float egoSpeed) {
@@ -286,7 +286,13 @@ void EgoVehicle::updateSpeedControl(
         }
 
         float relativeSpeed = smoothedSpeeds[targetId];
-        frontSpeed = currentEgoSpeed - relativeSpeed;
+        // Optional: Check if the target is newly initialized
+        bool isNew = (buf.size() < 3); // Hoặc dùng thêm flag
+        if (isNew) {
+            frontSpeed = -1.0f; // Or std::nullopt if using optional
+        } else {
+            frontSpeed = currentEgoSpeed - relativeSpeed;
+        }
 
         // Speed control using acceleration
         if (dt >= config.speedAdjustment.speedUpdateInterval) {
@@ -351,14 +357,15 @@ void EgoVehicle::updateSpeedControl(
 
 // --- NEW: Function to calculate engine, throttle, and brake forces ---
 void EgoVehicle::calculateEngineForces(float egoSpeed) {
-    // Assume vehicle mass (kg)
-    const float vehicleMass = 1500.0f;
+
     // Convert speed from km/h to m/s
     float speedMS = egoSpeed / 3.6f;
     // Engine force = mass * acceleration
-    this->engineForce = vehicleMass * this->currentAcceleration;
+    this->engineForce = this->vehicleMass * this->currentAcceleration;
     // Throttle force = proportional to throttleCmd
-    this->throttleForce = vehicleMass * this->throttleCmd * config.speedAdjustment.maxAcceleration;
+    this->throttleForce = this->vehicleMass * this->throttleCmd *
+                          config.speedAdjustment.maxAcceleration;
     // Brake force = proportional to brakeCmd
-    this->brakeForce = vehicleMass * this->brakeCmd * (-config.speedAdjustment.maxDeceleration);
+    this->brakeForce = this->vehicleMass * this->brakeCmd *
+                       (-config.speedAdjustment.maxDeceleration);
 }

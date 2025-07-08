@@ -22,9 +22,9 @@
     "minSpeedThreshold": 1.0
   },
   "adaptiveSpeedControl": {
-    "initialSpeedKph": 50.0,
+    "initialSpeedKph": 30.0,
     "cruiseSpeedKph": 70,
-    "targetFollowingDistance": 25.0,
+    "targetFollowingDistance": 30.0,
     "minFollowingDistance": 8.0,
     "criticalDistance": 4.0
   },
@@ -33,39 +33,17 @@
     "gentleAdjustment": 2.0,
     "moderateAdjustment": 5.0,
     "aggressiveAdjustment": 8.0,
-    "minSpeedKph": 10.0,
+    "minSpeedKph": 0.0,
     "maxSpeedKph": 100.0,
     "maxAcceleration": 3.0,
     "maxDeceleration": -5.0,
     "comfortDeceleration": -2.0,
-    "maxJerk": 2.0
+    "maxJerk": 2.0,
+    "vehicleMass": 1500.0
   },
   "objectTracking": {
     "trackClasses": [
       2
-    ],
-    "classNames": [
-      "person",
-      "bicycle",
-      "car",
-      "motorcycle",
-      "bus",
-      "truck",
-      "stop sign",
-      "other-vehicle",
-      "crosswalk",
-      "red light",
-      "yellow light",
-      "green light",
-      "Limit 30km-h",
-      "Limit 40km-h",
-      "Limit 50km-h",
-      "Limit 60km-h",
-      "Limit 70km-h",
-      "Limit 80km-h",
-      "End Limit 60km-h",
-      "End Limit 70km-h",
-      "End Limit 80km-h"
     ]
   }
 }

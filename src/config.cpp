@@ -14,6 +14,28 @@ const cv::Scalar orange(0, 165, 255);
 const cv::Scalar green(102, 255, 102);
 const cv::Scalar gray(180, 180, 180);
 
+const std::vector<std::string> classNames = {"person",
+                                             "bicycle",
+                                             "car",
+                                             "motorcycle",
+                                             "bus",
+                                             "truck",
+                                             "stop sign",
+                                             "other-vehicle",
+                                             "crosswalk",
+                                             "red light",
+                                             "yellow light",
+                                             "green light",
+                                             "Limit 30km-h",
+                                             "Limit 40km-h",
+                                             "Limit 50km-h",
+                                             "Limit 60km-h",
+                                             "Limit 70km-h",
+                                             "Limit 80km-h",
+                                             "End Limit 60km-h",
+                                             "End Limit 70km-h",
+                                             "End Limit 80km-h"};
+
 const std::vector<std::vector<unsigned int>> colors = {
     {220, 20, 60},   {119, 172, 48}, {0, 114, 189},   {237, 177, 32},
     {126, 47, 142},  {217, 83, 25},  {255, 0, 0},     {153, 153, 153},
@@ -85,14 +107,13 @@ void loadConfig(const std::string &configPath) {
             jsonConfig["speedAdjustment"]["comfortDeceleration"];
         config.speedAdjustment.maxJerk =
             jsonConfig["speedAdjustment"]["maxJerk"];
-
+        config.speedAdjustment.vehicleMass =
+            jsonConfig["speedAdjustment"]["vehicleMass"];
         // Parse object tracking
         config.objectTracking.trackClasses =
             jsonConfig["objectTracking"]["trackClasses"]
                 .get<std::vector<int>>();
-        config.objectTracking.classNames =
-            jsonConfig["objectTracking"]["classNames"]
-                .get<std::vector<std::string>>();
+        config.objectTracking.classNames = classNames;
         config.objectTracking.colors = colors; // Use predefined colors
     } catch (const std::exception &e) {
         throw std::runtime_error("Failed to parse config file: " +
