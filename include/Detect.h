@@ -16,7 +16,7 @@ struct Detection {
     Rect bbox;   // Bounding box coordinates around the detected object
 };
 
-// Main class for the YOLOv12 model
+// Main class for the YOLOv11 model
 class Detect {
 private:
     // Private members for the Detect class
