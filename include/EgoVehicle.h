@@ -10,6 +10,7 @@
 #include <opencv2/core.hpp>
 #include <string>
 #include <tuple>
+#include <utils.hpp>
 using namespace Config;
 enum class DrivingState {
     emergencyBrake,
@@ -26,7 +27,7 @@ public:
         : throttleCmd(0.0f), brakeCmd(0.0f), currentAcceleration(0.0f),
           engineForce(0.0f), throttleForce(0.0f), brakeForce(0.0f) {}
 
-    void updateSpeedControl(double timeStart, int targetId,
+    void updateSpeedControl(double timeStart, int targetId, int classId,
                             const cv::Rect &bestBox, float &currentEgoSpeed,
                             double &lastSpeedUpdateTime,
                             std::map<int, std::deque<float>> &objectBuffers,
@@ -44,8 +45,10 @@ public:
     float getEngineForce() { return this->engineForce; }
     float getThrottleForce() { return this->throttleForce; }
     float getBrakeForce() { return this->brakeForce; }
+    bool isAccActive() { return this->accActive; }
 
 private:
+    bool accActive;
     std::string action;
     float throttleCmd;
     float brakeCmd;

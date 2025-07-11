@@ -43,8 +43,6 @@ void EnhancedVideoSubscriber::initializeEnhancedFeatures() {
         dataLogger_.init(output_dir_);
     }
 
-    processing_times_.clear();
-    total_detections_ = 0;
     emergency_stop_ = false;
     last_detection_time_ = ros::Time::now().toSec();
 
@@ -175,31 +173,31 @@ void EnhancedVideoSubscriber::processEnhancedFrame(cv::Mat &image) {
     }
 
     std::vector<STrack> outputStracks = tracker_.update(objects);
-    total_detections_ += outputStracks.size();
 
     performEnhancedTargetSelection(outputStracks, lanes, image);
 
     cv::Scalar actionColor = cv::Scalar(0, 255, 0);
     float avgDistance = 0.0f;
     float frontAbsoluteSpeed = 0.0f;
-    bool accActive = isTrackingClass(classId_);
+
     egoVehicle_.updateSpeedControl(
-        timeStart, targetId_, bestBox_, currentEgoSpeed_, lastSpeedUpdateTime_,
-        objectBuffers_, prevDistances_, prevTimes_, smoothedSpeeds_,
-        speedChangeHistory_, avgDistance, frontAbsoluteSpeed, actionColor);
+        timeStart, targetId_, classId_, bestBox_, currentEgoSpeed_,
+        lastSpeedUpdateTime_, objectBuffers_, prevDistances_, prevTimes_,
+        smoothedSpeeds_, speedChangeHistory_, avgDistance, frontAbsoluteSpeed,
+        actionColor);
 
     updateSpeedLimits(outputStracks);
 
-    model_.draw(image, outputStracks);
     laneDetector_.drawLanes(image, lanes);
 
+    model_.draw(image, outputStracks, targetId_, egoVehicle_.isAccActive());
     updateFPS();
 
     hudRenderer_.setEmergencyStop(emergency_stop_);
     hudRenderer_.render(
         image, currentEgoSpeed_, accSpeed_, frontAbsoluteSpeed, avgDistance,
-        accActive, egoVehicle_.getAction(), actionColor, fps_, targetId_,
-        egoVehicle_.getEngineForce(), egoVehicle_.getThrottleForce(),
+        egoVehicle_.isAccActive(), egoVehicle_.getAction(), actionColor, fps_,
+        targetId_, egoVehicle_.getEngineForce(), egoVehicle_.getThrottleForce(),
         egoVehicle_.getBrakeForce());
 
     publishEnhancedData(currentEgoSpeed_, egoVehicle_.getAction(),
@@ -232,6 +230,19 @@ void EnhancedVideoSubscriber::performEnhancedTargetSelection(
     bool currentTargetStillExists = false;
     bool currentTargetInLane = false;
     float currentTargetBottomY = -1;
+    int farthestY = INT_MAX;
+
+    for (const auto &line : lanes) {
+        int y1 = line[1];
+        int y2 = line[3];
+
+        // Lấy giá trị y nhỏ nhất trong 2 điểm
+        int minY = std::min(y1, y2);
+
+        if (minY < farthestY) {
+            farthestY = minY;
+        }
+    }
 
     if (targetId_ != -1) {
         auto it = std::find_if(
@@ -268,8 +279,10 @@ void EnhancedVideoSubscriber::performEnhancedTargetSelection(
                 cv::Point center((tlbr[0] + tlbr[2]) / 2.0f,
                                  (tlbr[1] + tlbr[3]) / 2.0f);
                 cv::circle(image, center, 5, cv::Scalar(0, 255, 0), -1);
-
-                if (obj.track_id == targetId_) {
+                if (obj.track_id == targetId_ && tlbr[3] > farthestY - 40 &&
+                    cv::pointPolygonTest(lane_area, bottom_center, false) < 0) {
+                    continue;
+                } else if (obj.track_id == targetId_) {
                     currentTargetInLane = true;
                     lostTargetCount_ = 0;
                     framesCurrentTargetOutsideLane_ = 0;

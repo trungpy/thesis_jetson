@@ -73,9 +73,6 @@ private:
     HUDRenderer hudRenderer_;
     DataLogger dataLogger_;
 
-    std::deque<double> processing_times_;
-    int total_detections_;
-
     bool emergency_stop_;
     double last_detection_time_;
     static constexpr double DETECTION_TIMEOUT = 2.0;

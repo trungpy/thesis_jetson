@@ -1,5 +1,6 @@
 build
 models
 *.avi
-.vscode/*
+.vscode
 videos
+.vscode/settings.json

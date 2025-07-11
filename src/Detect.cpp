@@ -264,7 +264,8 @@ bool Detect::saveEngine(const std::string &onnxPath) {
     return true;
 }
 
-void Detect::draw(cv::Mat &image, const std::vector<STrack> &output) {
+void Detect::draw(cv::Mat &image, const std::vector<STrack> &output,
+                  int target_id, bool isAccActive) {
     const float ratio_h = static_cast<float>(inputHeight) / image.rows;
     const float ratio_w = static_cast<float>(inputWeight) / image.cols;
 
@@ -278,11 +279,18 @@ void Detect::draw(cv::Mat &image, const std::vector<STrack> &output) {
                          config.objectTracking.colors[classId][1],
                          config.objectTracking.colors[classId][2]);
 
-        // Draw rectangle
-        cv::rectangle(image, box, color, 2);
+        if (target_id == obj.track_id) {
+            // Draw rectangle
+            cv::rectangle(image, box, color, 2);
+        } else if (classId == 2 || classId == 4 || classId == 5) {
+            continue;
+        } else {
+            cv::rectangle(image, box, color, 2);
+        }
 
         // Estimate and draw distance if class is relevant
-        if (classId == 2 || classId == 4 || classId == 5) {
+        if ((classId == 2 || classId == 4 || classId == 5) &&
+            target_id == obj.track_id) {
             std::ostringstream ss;
             ss << std::fixed << std::setprecision(2) << obj.estimatedDistance
                << "m";
@@ -296,7 +304,8 @@ void Detect::draw(cv::Mat &image, const std::vector<STrack> &output) {
         // Prepare and draw label with smaller font
         std::ostringstream label_ss;
         label_ss << config.objectTracking.classNames[classId] << "."
-                 << std::fixed << std::setprecision(2) << obj.score;
+                 << std::fixed << std::setprecision(0) << obj.score * 100
+                 << "%";
 
         std::string label = label_ss.str();
 

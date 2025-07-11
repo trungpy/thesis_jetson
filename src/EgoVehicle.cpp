@@ -233,7 +233,7 @@ float EgoVehicle::updateEgoSpeedWithAcceleration(float currentSpeed,
 }
 // --- Modified main update function ---
 void EgoVehicle::updateSpeedControl(
-    double timeStart, int targetId, const cv::Rect &bestBox,
+    double timeStart, int targetId, int classId, const cv::Rect &bestBox,
     float &currentEgoSpeed, double &lastSpeedUpdateTime,
     std::map<int, std::deque<float>> &objectBuffers,
     std::map<int, float> &prevDistances, std::map<int, double> &prevTimes,
@@ -242,7 +242,7 @@ void EgoVehicle::updateSpeedControl(
 
     float dt = timeStart - lastSpeedUpdateTime;
 
-    if (targetId != -1 && bestBox.height > 0) {
+    if (targetId != -1 && bestBox.height > 0 && isTrackingClass(classId)) {
         float h = bestBox.height;
         float distance =
             (config.camera.realObjectWidth * config.camera.focalLength) / h;
@@ -287,12 +287,12 @@ void EgoVehicle::updateSpeedControl(
 
         float relativeSpeed = smoothedSpeeds[targetId];
         // Optional: Check if the target is newly initialized
-        bool isNew = (buf.size() < 3); // Hoặc dùng thêm flag
-        if (isNew) {
-            frontSpeed = -1.0f; // Or std::nullopt if using optional
-        } else {
-            frontSpeed = currentEgoSpeed - relativeSpeed;
-        }
+        // bool isNew = (buf.size() < 3);
+        // if (isNew) {
+        //     frontSpeed = -1.0f; // Or std::nullopt if using optional
+        // } else {
+        frontSpeed = currentEgoSpeed - relativeSpeed;
+        // }
 
         // Speed control using acceleration
         if (dt >= config.speedAdjustment.speedUpdateInterval) {
@@ -317,6 +317,11 @@ void EgoVehicle::updateSpeedControl(
                 speedChangeHistory.pop_front();
 
             lastSpeedUpdateTime = timeStart;
+            if (frontSpeed > config.speedControl.cruiseSpeedKph + 5.0f) {
+                this->accActive = false;
+            } else {
+                this->accActive = true;
+            }
             this->getActionAndColor(state, this->currentAcceleration,
                                     currentEgoSpeed, actionColor);
             // Calculate engine, throttle, and brake forces
@@ -345,7 +350,7 @@ void EgoVehicle::updateSpeedControl(
             // Calculate engine, throttle, and brake forces
             this->calculateEngineForces(currentEgoSpeed);
         }
-
+        this->accActive = false;
         frontSpeed = 0.0f;
         avgDistance = -1.0f;
         this->action = "Deactivated";
