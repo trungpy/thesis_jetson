@@ -38,7 +38,7 @@ private:
     std::string output_dir_;
     bool enable_debug_output_;
     bool enable_data_logging_;
-
+    bool enable_data_writer_;
     Detect model_;
     LaneDetector laneDetector_;
     BYTETracker tracker_;

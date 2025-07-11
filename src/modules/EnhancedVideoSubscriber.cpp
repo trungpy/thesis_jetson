@@ -34,6 +34,7 @@ void EnhancedVideoSubscriber::initializeEnhancedFeatures() {
     private_nh.param<std::string>("output_dir", output_dir_,
                                   "/tmp/driving_logs");
     private_nh.param<bool>("enable_debug_output", enable_debug_output_, true);
+    private_nh.param<bool>("enable_data_writer", enable_data_writer_, false);
     private_nh.param<bool>("enable_data_logging", enable_data_logging_, true);
 
     createDirectory(output_dir_);
@@ -50,6 +51,7 @@ void EnhancedVideoSubscriber::initializeEnhancedFeatures() {
     ROS_INFO("Enhanced features initialized:");
     ROS_INFO("- Debug output: %s",
              enable_debug_output_ ? "enabled" : "disabled");
+    ROS_INFO("- Data writer: %s", enable_data_writer_ ? "enabled" : "disabled");
     ROS_INFO("- Data logging: %s",
              enable_data_logging_ ? "enabled" : "disabled");
     ROS_INFO("- Output directory: %s", output_dir_.c_str());
@@ -135,13 +137,17 @@ void EnhancedVideoSubscriber::imageCallback(
             return;
         }
 
-        if (!videoRecorder_.isInitialized()) {
-            videoRecorder_.init(image, output_dir_);
+        if (enable_data_writer_) {
+            if (!videoRecorder_.isInitialized()) {
+                videoRecorder_.init(image, output_dir_);
+            }
         }
         // ROS_INFO("Output file in %s", output_dir_.c_str());
 
         processEnhancedFrame(image);
-        videoRecorder_.writeFrame(image);
+        if (enable_data_writer_) {
+            videoRecorder_.writeFrame(image);
+        }
 
     } catch (cv_bridge::Exception &e) {
         ROS_ERROR("cv_bridge exception: %s", e.what());

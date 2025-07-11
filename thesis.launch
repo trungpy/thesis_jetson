@@ -2,7 +2,7 @@
     <!-- Video Publisher Node -->
     <node name="video_publisher" pkg="thesis" type="video_publisher">
         <param name="video_path"
-            value="/home/trung/Desktop/Thesis_University/c++/videos/test.mp4" />
+            value="/home/trung/catkin_ws/src/thesis/videos/test_video_640x640.mp4" />
         <param name="fps" value="30.0" />
     </node>
 
@@ -11,7 +11,8 @@
         <param name="model_path" value="/home/trung/catkin_ws/src/thesis/models/30-06.engine" />
         <param name="output_dir" value="/home/trung/Desktop/logging" />
         <param name="enable_debug_output" value="true" />
-        <param name="enable_data_logging" value="true" />
+        <param name="enable_data_writer" value="false" />
+        <param name="enable_data_logging" value="false" />
     </node>
 
 </launch>
