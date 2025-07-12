@@ -358,11 +358,41 @@ The system implements five distinct driving states:
 
 ## 📊 Performance Metrics
 
-Typical performance on NVIDIA GTX 1650:
-- **Detection**: ~15ms per frame (640x640 input)
-- **Tracking**: ~5ms per frame
-- **Lane Detection**: ~10ms per frame
-- **Total Pipeline**: ~30ms per frame (30+ FPS)
+### 🖥️ On NVIDIA GTX 1650 (Desktop GPU)
+- **Object Detection (YOLOv8n - 640×640 input)**: ~15 ms/frame  
+- **Object Tracking (ByteTrack)**: ~5 ms/frame  
+- **Lane Detection (Segmentation-based)**: ~10 ms/frame  
+- **Speed Estimation + Behavior Logic (ACC)**: ~2–3 ms/frame  
+- **Total End-to-End Pipeline**: ~30–35 ms/frame  
+  → **Achieved FPS**: ~30+ FPS
+
+---
+
+### ⚙️ On NVIDIA Jetson Nano (4GB, runtime optimized with TensorRT FP16)
+> *Note: Performance varies depending on lighting, scene complexity, and input resolution.*
+
+- **Object Detection (YOLOv8n, TensorRT FP16)**: ~40–70 ms/frame  
+- **Object Tracking (ByteTrack)**: ~10–15 ms/frame  
+- **Lane Detection (Resized input, simplified model)**: ~15–20 ms/frame  
+- **Speed Estimation + Behavior Logic (Lightweight)**: ~3–5 ms/frame  
+- **Total End-to-End Pipeline**: ~65–110 ms/frame  
+  → **Achieved FPS**: **~9–15 FPS**
+
+---
+
+### ⚡ Optimization Notes
+- **TensorRT Acceleration**:  
+  Models converted to TensorRT (especially YOLOv8 and lane detection models) achieve significant gains using FP16 or INT8 precision.  
+- **Resolution Impact**:  
+  Reducing input resolution (e.g., 416×416 for detection) improves performance but may reduce accuracy.
+- **Power Mode** (Jetson):  
+  Ensure Jetson is set to maximum performance mode:
+  ```bash
+  sudo nvpmodel -m 0
+  sudo jetson_clocks
+  ```
+- **Multithreading/Pipelining**:  
+  Parallel processing of detection, tracking, and control logic can help maintain real-time performance.
 
 ## 🔒 Safety Features
 
