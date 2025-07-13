@@ -279,14 +279,14 @@ void Detect::draw(cv::Mat &image, const std::vector<STrack> &output,
                          config.objectTracking.colors[classId][1],
                          config.objectTracking.colors[classId][2]);
 
-        if (target_id == obj.track_id) {
-            // Draw rectangle
-            cv::rectangle(image, box, color, 2);
-        } else if (classId == 2 || classId == 4 || classId == 5) {
-            continue;
-        } else {
-            cv::rectangle(image, box, color, 2);
-        }
+        cv::rectangle(image, box, color, 2);
+        // if (target_id == obj.track_id) {
+        //     // Draw rectangle
+        // } else if (classId == 2 || classId == 4 || classId == 5) {
+        //     continue;
+        // } else {
+        //     cv::rectangle(image, box, color, 2);
+        // }
 
         // Estimate and draw distance if class is relevant
         if ((classId == 2 || classId == 4 || classId == 5) &&
