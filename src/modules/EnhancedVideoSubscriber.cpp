@@ -164,54 +164,59 @@ void EnhancedVideoSubscriber::processEnhancedFrame(cv::Mat &image) {
     model_.preprocess(image);
     model_.infer();
     model_.postProcess(image, res);
+    double inferenceMs = chrono::duration<double, std::milli>(
+                             chrono::high_resolution_clock::now() - start)
+                             .count();
+    model_.draw(image, res);
+    updateFPS(inferenceMs, image);
+    // std::vector<Object> objects = filterDetections(res);
+    // std::vector<cv::Vec4i> lanes = laneDetector_.detectLanes(image);
 
-    std::vector<Object> objects = filterDetections(res);
-    std::vector<cv::Vec4i> lanes = laneDetector_.detectLanes(image);
+    // if (!objects.empty()) {
+    //     last_detection_time_ = ros::Time::now().toSec();
+    // }
 
-    if (!objects.empty()) {
-        last_detection_time_ = ros::Time::now().toSec();
-    }
+    // std::vector<STrack> outputStracks = tracker_.update(objects);
 
-    std::vector<STrack> outputStracks = tracker_.update(objects);
+    // performEnhancedTargetSelection(outputStracks, lanes, image);
 
-    performEnhancedTargetSelection(outputStracks, lanes, image);
+    // cv::Scalar actionColor = cv::Scalar(0, 255, 0);
+    // float avgDistance = 0.0f;
+    // float frontAbsoluteSpeed = 0.0f;
 
-    cv::Scalar actionColor = cv::Scalar(0, 255, 0);
-    float avgDistance = 0.0f;
-    float frontAbsoluteSpeed = 0.0f;
+    // egoVehicle_.updateSpeedControl(
+    //     timeStart, targetId_, classId_, bestBox_, currentEgoSpeed_,
+    //     lastSpeedUpdateTime_, objectBuffers_, prevDistances_, prevTimes_,
+    //     smoothedSpeeds_, speedChangeHistory_, avgDistance,
+    //     frontAbsoluteSpeed, actionColor);
 
-    egoVehicle_.updateSpeedControl(
-        timeStart, targetId_, classId_, bestBox_, currentEgoSpeed_,
-        lastSpeedUpdateTime_, objectBuffers_, prevDistances_, prevTimes_,
-        smoothedSpeeds_, speedChangeHistory_, avgDistance, frontAbsoluteSpeed,
-        actionColor);
+    // updateSpeedLimits(outputStracks);
 
-    updateSpeedLimits(outputStracks);
+    // laneDetector_.drawLanes(image, lanes);
 
-    laneDetector_.drawLanes(image, lanes);
+    // model_.draw(image, outputStracks, targetId_, egoVehicle_.isAccActive());
 
-    model_.draw(image, outputStracks, targetId_, egoVehicle_.isAccActive());
-    updateFPS();
+    // hudRenderer_.setEmergencyStop(emergency_stop_);
 
-    hudRenderer_.setEmergencyStop(emergency_stop_);
-    hudRenderer_.render(
-        image, currentEgoSpeed_, accSpeed_, frontAbsoluteSpeed, avgDistance,
-        egoVehicle_.isAccActive(), egoVehicle_.getAction(), actionColor, fps_,
-        targetId_, egoVehicle_.getEngineForce(), egoVehicle_.getThrottleForce(),
-        egoVehicle_.getBrakeForce());
+    // publishEnhancedData(currentEgoSpeed_, egoVehicle_.getAction(),
+    //                     egoVehicle_.getThrottleCmd(),
+    //                     egoVehicle_.getBrakeCmd());
 
-    publishEnhancedData(currentEgoSpeed_, egoVehicle_.getAction(),
-                        egoVehicle_.getThrottleCmd(),
-                        egoVehicle_.getBrakeCmd());
-
-    if (enable_data_logging_) {
-        auto end = chrono::high_resolution_clock::now();
-        double processing_time = chrono::duration<double>(end - start).count();
-        dataLogger_.log(timeStart, frameCount_, fps_, currentEgoSpeed_,
-                        targetId_, egoVehicle_.getAction(),
-                        outputStracks.size(), avgDistance, frontAbsoluteSpeed,
-                        processing_time, maxSpeed_, accSpeed_);
-    }
+    // hudRenderer_.render(
+    //     image, currentEgoSpeed_, accSpeed_, frontAbsoluteSpeed, avgDistance,
+    //     egoVehicle_.isAccActive(), egoVehicle_.getAction(), actionColor,
+    //     fps_, targetId_, egoVehicle_.getEngineForce(),
+    //     egoVehicle_.getThrottleForce(), egoVehicle_.getBrakeForce());
+    // if (enable_data_logging_) {
+    //     auto end = chrono::high_resolution_clock::now();
+    //     double processing_time = chrono::duration<double>(end -
+    //     start).count(); dataLogger_.log(timeStart, frameCount_, fps_,
+    //     currentEgoSpeed_,
+    //                     targetId_, egoVehicle_.getAction(),
+    //                     outputStracks.size(), avgDistance,
+    //                     frontAbsoluteSpeed, processing_time, maxSpeed_,
+    //                     accSpeed_);
+    // }
 
     if (enable_debug_output_) {
         cv::imshow("Enhanced Driving Assistant", image);
@@ -415,16 +420,36 @@ void EnhancedVideoSubscriber::updateSpeedLimits(
     //     accSpeed_ = config.speedControl.cruiseSpeedKph;
     // }
 }
-
-void EnhancedVideoSubscriber::updateFPS() {
+void EnhancedVideoSubscriber::updateFPS(double inferenceTimeMs,
+                                        cv::Mat &image) {
     frameCount_++;
+    totalInferenceTimeMs_ += inferenceTimeMs;
+
     auto now = chrono::steady_clock::now();
     auto elapsed =
         chrono::duration_cast<chrono::seconds>(now - fpsStartTime_).count();
 
+    std::ostringstream oss;
+
     if (elapsed >= 1) {
         fps_ = frameCount_ / static_cast<double>(elapsed);
+        double avgInference = totalInferenceTimeMs_ / frameCount_;
+
+        oss << std::fixed << std::setprecision(2) << "FPS: " << fps_
+            << " | Inference: " << avgInference << " ms";
+
+        // Reset counters
         frameCount_ = 0;
+        totalInferenceTimeMs_ = 0.0;
         fpsStartTime_ = now;
+    } else {
+        oss << std::fixed << std::setprecision(2) << "FPS: " << fps_
+            << " | Inference: "
+            << (frameCount_ > 0 ? (totalInferenceTimeMs_ / frameCount_) : 0.0)
+            << " ms";
     }
+
+    // Hiển thị lên frame
+    cv::putText(image, oss.str(), cv::Point(20, 30), cv::FONT_HERSHEY_SIMPLEX,
+                0.8, cv::Scalar(0, 255, 255), 2);
 }

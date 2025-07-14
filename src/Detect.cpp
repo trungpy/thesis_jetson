@@ -321,6 +321,36 @@ void Detect::draw(cv::Mat &image, const std::vector<STrack> &output,
     }
 }
 
+void Detect::draw(Mat &image, const vector<Detection> &output) {
+    const float ratio_h = inputHeight / (float)image.rows;
+    const float ratio_w = inputWeight / (float)image.cols;
+
+    for (int i = 0; i < output.size(); i++) {
+        auto detection = output[i];
+        auto box = detection.bbox;
+        auto classId = detection.classId;
+        auto conf = detection.conf;
+        cv::Scalar color(config.objectTracking.colors[classId][0],
+                         config.objectTracking.colors[classId][1],
+                         config.objectTracking.colors[classId][2]);
+
+        rectangle(image, Point(box.x, box.y),
+                  Point(box.x + box.width, box.y + box.height), color, 2);
+
+        // Detection box text
+        // Prepare and draw label with smaller font
+        std::ostringstream label_ss;
+        label_ss << config.objectTracking.classNames[classId] << "."
+                 << std::fixed << std::setprecision(0) << conf * 100 << "%";
+
+        std::string label = label_ss.str();
+
+        // Smaller font for main label
+        cv::putText(image, label, cv::Point(box.x + 2, box.y - 5),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 255), 1,
+                    cv::LINE_AA);
+    }
+}
 cv::Rect Detect::scaleBoxToOriginal(const cv::Rect &input_box,
                                     const cv::Size &model_input_size,
                                     const cv::Size &original_size) {

@@ -22,7 +22,6 @@
 #include <nlohmann/json.hpp>
 #include <opencv2/core.hpp>
 #include <string>
-#include <vector>
 
 namespace Config {
 

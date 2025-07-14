@@ -43,6 +43,7 @@ public:
     // Draw bounding boxes and labels on the original image
     void draw(Mat &image, const vector<STrack> &output, int target_id,
               bool isAccActive);
+    void draw(Mat &image, const vector<Detection> &output);
 
 private:
     // Initialize the TensorRT engine from a serialized model file

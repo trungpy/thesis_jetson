@@ -44,6 +44,7 @@ private:
     BYTETracker tracker_;
     int frameCount_;
     std::chrono::steady_clock::time_point fpsStartTime_;
+    double totalInferenceTimeMs_ = 0.0;
     double fps_;
 
     int maxSpeed_;
@@ -96,7 +97,7 @@ private:
         bool currentTargetStillExists, bool currentTargetInLane,
         float maxBottomY, float currentTargetBottomY);
     void updateSpeedLimits(const std::vector<STrack> &outputStracks);
-    void updateFPS();
+    void updateFPS(double inferenceTimeMs, cv::Mat &image);
 
 public:
     EnhancedVideoSubscriber();
