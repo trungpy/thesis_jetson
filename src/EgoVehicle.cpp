@@ -6,15 +6,21 @@
 std::pair<DrivingState, int>
 EgoVehicle::getDrivingState(float distance, float frontSpeed, float egoSpeed) {
     const float speedDiff = egoSpeed - frontSpeed;
-    const float closeGap = config.speedControl.minFollowingDistance;
-    const float safeGap = config.speedControl.targetFollowingDistance;
-    const float criticalGap = config.speedControl.criticalDistance;
 
-    if (distance < criticalGap) {
+    // D_safe = d_0 + T_r * v_ego
+    const float d0 = config.speedControl.minFollowingDistance; // e.g., 5.0 m
+    const float Tr = config.speedControl.reactionTime;          // e.g., 1.5 s
+    const float D_safe = d0 + Tr * (egoSpeed / 3.6f);            // v_ego in m/s
+
+    // Critical braking distance: v² / (2 * |a_max|)
+    const float maxDecel = std::abs(config.speedAdjustment.maxDeceleration);
+    const float D_crit = (egoSpeed * egoSpeed) / (2 * maxDecel * 3.6f * 3.6f); // Convert v² to m²/s²
+
+    if (distance < D_crit) {
         return {DrivingState::emergencyBrake, 3};
-    } else if (distance < closeGap) {
+    } else if (distance < D_safe * 0.5f) {
         return {DrivingState::closeFollow, 2};
-    } else if (distance < safeGap) {
+    } else if (distance < D_safe) {
         if (speedDiff > 10) {
             return {DrivingState::slowTraffic, 2};
         } else {
@@ -27,6 +33,7 @@ EgoVehicle::getDrivingState(float distance, float frontSpeed, float egoSpeed) {
         return {DrivingState::freeDrive, 0};
     }
 }
+
 
 std::string toString(DrivingState state) {
     switch (state) {
@@ -287,12 +294,12 @@ void EgoVehicle::updateSpeedControl(
 
         float relativeSpeed = smoothedSpeeds[targetId];
         // Optional: Check if the target is newly initialized
-        // bool isNew = (buf.size() < 3);
-        // if (isNew) {
-        //     frontSpeed = -1.0f; // Or std::nullopt if using optional
-        // } else {
+        bool isNew = (buf.size() < 3);
+        if (isNew) {
+            frontSpeed = 60.0f; // Or std::nullopt if using optional
+        } else {
         frontSpeed = currentEgoSpeed - relativeSpeed;
-        // }
+        }
 
         // Speed control using acceleration
         if (dt >= config.speedAdjustment.speedUpdateInterval) {

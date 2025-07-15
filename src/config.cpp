@@ -82,6 +82,7 @@ void loadConfig(const std::string &configPath) {
             jsonConfig["adaptiveSpeedControl"]["cruiseSpeedKph"],
             jsonConfig["adaptiveSpeedControl"]["targetFollowingDistance"],
             jsonConfig["adaptiveSpeedControl"]["minFollowingDistance"],
+            jsonConfig["adaptiveSpeedControl"]["reactionTime"],
             jsonConfig["adaptiveSpeedControl"]["criticalDistance"]};
 
         // Parse speed adjustment

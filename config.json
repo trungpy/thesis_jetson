@@ -15,29 +15,30 @@
     "nmsThreshold": 0.5
   },
   "distanceSpeedEstimation": {
-    "maxValidSpeedKph": 100.0,
+    "maxValidSpeedKph": 90.0,
     "minDistDelta": 0.5,
     "smoothingFactor": 0.3,
     "minTimeDelta": 0.2,
     "minSpeedThreshold": 1.0
   },
   "adaptiveSpeedControl": {
-    "initialSpeedKph": 30.0,
+    "initialSpeedKph": 50.0,
     "cruiseSpeedKph": 70,
     "targetFollowingDistance": 30.0,
-    "minFollowingDistance": 8.0,
-    "criticalDistance": 4.0
+    "minFollowingDistance": 3.0,
+    "criticalDistance": 4.0,
+    "reactionTime": 0.7
   },
   "speedAdjustment": {
     "speedUpdateInterval": 0.02,
     "gentleAdjustment": 2.0,
-    "moderateAdjustment": 5.0,
-    "aggressiveAdjustment": 8.0,
+    "moderateAdjustment": 2.5,
+    "aggressiveAdjustment": 4.5,
     "minSpeedKph": 0.0,
     "maxSpeedKph": 100.0,
     "maxAcceleration": 3.0,
-    "maxDeceleration": -5.0,
-    "comfortDeceleration": -2.0,
+    "maxDeceleration": -3.0,
+    "comfortDeceleration": -1.2,
     "maxJerk": 2.0,
     "vehicleMass": 1500.0
   },

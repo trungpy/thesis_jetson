@@ -54,6 +54,7 @@ struct AdaptiveSpeedControl {
     float targetFollowingDistance;
     float minFollowingDistance;
     float criticalDistance;
+    float reactionTime;
 };
 
 struct SpeedAdjustment {

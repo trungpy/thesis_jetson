@@ -2,7 +2,7 @@
     <!-- Video Publisher Node -->
     <node name="video_publisher" pkg="thesis" type="video_publisher">
         <param name="video_path"
-            value="/home/trung/catkin_ws/src/thesis/videos/test_video.mp4" />
+            value="/home/trung/catkin_ws/src/thesis/videos/test_video_640x640.mp4" />
         <param name="fps" value="30.0" />
     </node>
 
